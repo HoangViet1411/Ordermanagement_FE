@@ -1,0 +1,65 @@
+<div class="confirm-container">
+  <mat-card class="confirm-card">
+    <mat-card-header>
+      <mat-card-title>Confirm Your Email</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <p class="info-text">
+        We've sent a confirmation code to <strong>{{ email }}</strong>.
+        Please enter the code below to verify your email address.
+      </p>
+
+      <form [formGroup]="confirmForm" (ngSubmit)="onSubmit()">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Confirmation Code</mat-label>
+          <input matInput 
+                 type="text" 
+                 formControlName="code" 
+                 placeholder="Enter 6-digit code"
+                 maxlength="6"
+                 required>
+          <mat-icon matPrefix>vpn_key</mat-icon>
+          @if (code?.hasError('required') && code?.touched) {
+            <mat-error>Confirmation code is required</mat-error>
+          }
+          @if (code?.hasError('minlength') && code?.touched) {
+            <mat-error>Code must be at least 6 characters</mat-error>
+          }
+        </mat-form-field>
+
+        <button mat-raised-button 
+                color="primary" 
+                type="submit" 
+                class="full-width"
+                [disabled]="confirmForm.invalid || isLoading">
+          @if (isLoading) {
+            <mat-spinner diameter="20" class="spinner"></mat-spinner>
+            <span>Confirming...</span>
+          } @else {
+            <span>Confirm Email</span>
+          }
+        </button>
+      </form>
+
+      <div class="resend-section">
+        <p class="resend-text">Didn't receive the code?</p>
+        <button mat-button 
+                color="primary" 
+                type="button"
+                (click)="onResendCode()"
+                [disabled]="isLoading || !email">
+          Resend Code
+        </button>
+      </div>
+
+      <!-- Link back to sign up -->
+      <div style="text-align: center; margin-top: 1rem;">
+        <a routerLink="/signup" style="color: #667eea; text-decoration: none;">
+          Back to Sign Up
+        </a>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+

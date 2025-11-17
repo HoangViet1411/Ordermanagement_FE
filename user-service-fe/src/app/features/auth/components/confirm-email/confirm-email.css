@@ -1,0 +1,73 @@
+.confirm-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.confirm-card {
+  max-width: 450px;
+  width: 100%;
+}
+
+.confirm-card mat-card-header {
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.confirm-card mat-card-title {
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+.info-text {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #666;
+  line-height: 1.6;
+}
+
+.info-text strong {
+  color: #667eea;
+  font-weight: 600;
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.spinner {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+button[mat-raised-button] {
+  margin-top: 1rem;
+  height: 48px;
+  font-size: 1rem;
+}
+
+button[mat-raised-button]:disabled {
+  opacity: 0.6;
+}
+
+.resend-section {
+  text-align: center;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.resend-text {
+  margin-bottom: 0.5rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+button[mat-button] {
+  margin-top: 0.5rem;
+}
+

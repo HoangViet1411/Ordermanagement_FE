@@ -1,0 +1,48 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* Angular Material Theme */
+@import '@angular/material/prebuilt-themes/azure-blue.css';
+
+/* Material Icons */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+}
+
+/* Success Snackbar Styles */
+.success-snackbar {
+  background-color: #4caf50 !important;
+  color: white !important;
+  font-weight: 500;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.success-snackbar .mat-mdc-snack-bar-action {
+  color: white !important;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+/* Error Snackbar Styles */
+.error-snackbar {
+  background-color: #f44336 !important;
+  color: white !important;
+  font-weight: 500;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.error-snackbar .mat-mdc-snack-bar-action {
+  color: white !important;
+  font-weight: bold;
+  font-size: 18px;
+}

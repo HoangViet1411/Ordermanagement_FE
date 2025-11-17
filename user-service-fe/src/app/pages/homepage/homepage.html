@@ -1,0 +1,20 @@
+<div class="homepage-container">
+  <mat-card class="welcome-card">
+    <mat-card-content>
+      <h1>Hello</h1>
+      <p>Welcome to User Service Frontend</p>
+      
+      @if (isAuthenticated()) {
+        <div class="logout-section">
+          <button mat-raised-button 
+                  color="warn" 
+                  (click)="onLogout()"
+                  class="logout-button">
+            <mat-icon>logout</mat-icon>
+            <span>Logout</span>
+          </button>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>
