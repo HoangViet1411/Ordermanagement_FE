@@ -9,98 +9,92 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 export class AuthInterceptor implements HttpInterceptor {
   private isRefreshing = false;
 
-  constructor(
-    private authService: AuthService
-  ) {}
+  constructor(private authService: AuthService) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<any> {
-    // Chỉ thêm token cho requests đến backend API
-    const isApiRequest = req.url.startsWith('http://localhost:3000/api') || req.url.includes('/api/');
-    const isCognitoRequest = req.url.includes('amazoncognito.com') || req.url.includes('amazonaws.com');
-    
-    if (isApiRequest && !isCognitoRequest) {
-      // Lấy token từ Amplify session (async)
-      return from(this.getTokenFromAmplify()).pipe(
-        switchMap((token) => {
-          if (token) {
-            req = this.addTokenHeader(req, token);
-          }
-          return next.handle(req).pipe(
-            catchError((error: HttpErrorResponse) => {
-              // Nếu lỗi 401, thử refresh token
-              if (error.status === 401) {
-                return this.handle401Error(req, next);
-              }
-              return throwError(() => error);
-            })
-          );
-        })
-      );
+    // 👉 Kiểm tra và bỏ qua hoàn toàn các request đến Cognito/AWS
+    // Amplify tự quản lý authentication với Cognito, không cần interceptor can thiệp
+    const isCognitoRequest =
+      req.url.includes('amazoncognito.com') ||
+      req.url.includes('cognito-idp') ||
+      req.url.includes('amazonaws.com');
+
+    // 👉 Nếu request đi đến Cognito/AWS → pass through ngay lập tức, KHÔNG can thiệp
+    if (isCognitoRequest) {
+      return next.handle(req);
     }
 
-    // Không phải API request, không cần token
-    return next.handle(req).pipe(
-      catchError((error: HttpErrorResponse) => {
-        if (error.status === 401 && isApiRequest && !isCognitoRequest) {
-          return this.handle401Error(req, next);
+    // 👉 Còn lại (backend API) → attach token
+    return from(this.getTokenFromAmplify()).pipe(
+      switchMap((token) => {
+        if (token) {
+          req = this.addTokenHeader(req, token);
+        } else {
+          console.error('[AuthInterceptor] No token available');
+          return throwError(() => new Error('Access token is required'));
         }
-        return throwError(() => error);
+
+        return next.handle(req).pipe(
+          catchError((error: HttpErrorResponse) => {
+            if (error.status === 401) {
+              return this.handle401Error(req, next);
+            }
+            return throwError(() => error);
+          })
+        );
       })
     );
   }
 
   private async getTokenFromAmplify(): Promise<string | null> {
     try {
-      const session = await fetchAuthSession();
+      const session = await fetchAuthSession({ forceRefresh: false });
       return session.tokens?.accessToken?.toString() || null;
     } catch (error) {
+      console.error('[AuthInterceptor] fetchAuthSession error:', error);
       return null;
     }
   }
 
-  private addTokenHeader(request: HttpRequest<any>, token: string): HttpRequest<any> {
-    return request.clone({
+  private addTokenHeader(req: HttpRequest<any>, token: string): HttpRequest<any> {
+    return req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`
       }
     });
   }
 
-  private handle401Error(request: HttpRequest<any>, next: HttpHandler): Observable<any> {
+  private handle401Error(req: HttpRequest<any>, next: HttpHandler): Observable<any> {
     if (!this.isRefreshing) {
       this.isRefreshing = true;
 
       return this.authService.refreshToken().pipe(
-        switchMap((authResponse: any) => {
+        switchMap((res: any) => {
           this.isRefreshing = false;
-          if (authResponse && authResponse.accessToken) {
-            return next.handle(this.addTokenHeader(request, authResponse.accessToken));
+
+          if (res?.accessToken) {
+            return next.handle(this.addTokenHeader(req, res.accessToken));
           }
-          // Nếu refresh fail, logout
+
           this.authService.logout().subscribe();
           return throwError(() => new Error('Token refresh failed'));
         }),
-        catchError((err) => {
+        catchError(err => {
           this.isRefreshing = false;
-          // Refresh token expired, logout user
           this.authService.logout().subscribe();
           return throwError(() => err);
         })
       );
-    } else {
-      // Đang refresh, đợi một chút rồi thử lại
-      return from(new Promise(resolve => setTimeout(resolve, 500))).pipe(
-        switchMap(() => {
-          return from(this.getTokenFromAmplify()).pipe(
-            switchMap((token) => {
-              if (token) {
-                return next.handle(this.addTokenHeader(request, token));
-              }
-              return throwError(() => new Error('No token available'));
-            })
-          );
-        })
-      );
     }
+
+    // Nếu đang refresh thì retry ngay
+    return from(this.getTokenFromAmplify()).pipe(
+      switchMap(token => {
+        if (token) {
+          return next.handle(this.addTokenHeader(req, token));
+        }
+        return throwError(() => new Error('No token available'));
+      })
+    );
   }
 }

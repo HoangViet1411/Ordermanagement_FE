@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -13,6 +13,7 @@ import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AuthService, ApiResponse, AuthResponse } from '../../../../core/services/auth.service';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 @Component({
   selector: 'app-signin',
@@ -58,29 +59,68 @@ export class SignInComponent {
     const { email, password } = this.signInForm.value;
 
     this.authService.signIn({ email, password }).subscribe({
-      next: (response: ApiResponse<AuthResponse>) => {
+      next: async (response: ApiResponse<AuthResponse>) => {
         if (response.success) {
           this.showSuccess('Welcome back! Sign in successful.');
-          // Delay redirect để user thấy thông báo
-          setTimeout(() => {
-            this.router.navigate(['/']); // Redirect to homepage
-          }, 1500);
+          
+          // Log để kiểm tra token đã được get sau khi signin chưa
+          const session = await fetchAuthSession();
+          console.log('SESSION TOKENS:', session.tokens);
+          
+          // Kiểm tra profile và redirect dựa trên kết quả
+          this.authService.checkProfileAfterSignIn().subscribe({
+            next: (profileResult) => {
+              if (profileResult.hasProfile) {
+                // User đã có profile → redirect to homepage
+                setTimeout(() => {
+                  this.router.navigate(['/']);
+                }, 1500);
+              } else {
+                // User chưa có profile → redirect to create profile
+                setTimeout(() => {
+                  this.router.navigate(['/profile'], { 
+                    queryParams: { mode: 'create' } 
+                  });
+                }, 1500);
+              }
+              this.isLoading = false;
+            },
+            error: (error) => {
+              console.error('[SignIn] Error checking profile:', error);
+              // Nếu lỗi, vẫn redirect về homepage
+              setTimeout(() => {
+                this.router.navigate(['/']);
+              }, 1500);
+              this.isLoading = false;
+            }
+          });
         } else {
-          // Check nếu là UserNotConfirmedException → auto redirect đến verify page
-          if (response.errorName === 'UserNotConfirmedException' || 
-              response.message?.includes('not confirmed') ||
-              response.message?.includes('not verified')) {
-            this.showError('Your account needs to be verified. Redirecting to verification page...');
+          // Nếu không success, check errorName để xử lý đặc biệt
+          const errorName = response.errorName || '';
+          
+          // Check nếu là UserNotConfirmedException → auto redirect đến confirm page
+          if (
+            errorName === 'UserNotConfirmedException' ||
+            response.message?.includes('not confirmed') ||
+            response.message?.includes('UserNotConfirmed') ||
+            response.message?.includes('not verified')
+          ) {
+            // Code đã được gửi tự động trong auth.service.ts
+            const message = response.message?.includes('has been sent') 
+              ? response.message 
+              : 'Your account needs to be verified. Redirecting to verification page...';
+            this.showError(message);
             setTimeout(() => {
               this.router.navigate(['/confirm-email'], {
                 queryParams: { email: email }
               });
             }, 1500);
           } else {
+            // Hiển thị error message thông thường
             this.showError(response.message || 'Sign in failed');
           }
+          this.isLoading = false;
         }
-        this.isLoading = false;
       },
       error: (error: any) => {
         // Handle error từ HTTP hoặc các error khác
@@ -95,12 +135,10 @@ export class SignInComponent {
           errorMsg.includes('not verified')
         ) {
           // Code đã được gửi tự động trong auth.service.ts
-          // Nếu message có "has been sent", hiển thị message đó
-          if (errorMsg.includes('has been sent')) {
-            this.showError('A confirmation code has been sent to your email. Redirecting to verification page...');
-          } else {
-            this.showError('Your account needs to be verified. Redirecting to verification page...');
-          }
+          // Sử dụng message từ error (đã có thông tin về code đã được gửi)
+          this.showError(errorMsg.includes('has been sent') 
+            ? errorMsg 
+            : 'Your account needs to be verified. Redirecting to verification page...');
           setTimeout(() => {
             this.router.navigate(['/confirm-email'], {
               queryParams: { email: email }
@@ -139,4 +177,6 @@ export class SignInComponent {
   get password() {
     return this.signInForm.get('password');
   }
+
+  
 }

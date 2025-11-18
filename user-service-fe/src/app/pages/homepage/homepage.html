@@ -5,11 +5,28 @@
       <p>Welcome to User Service Frontend</p>
       
       @if (isAuthenticated()) {
-        <div class="logout-section">
+        <div class="actions-section">
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="viewProfile()"
+                  [disabled]="!currentUser"
+                  class="action-button">
+            <mat-icon>person</mat-icon>
+            <span>Profile</span>
+          </button>
+          
+          <button mat-raised-button 
+                  color="primary" 
+                  routerLink="/user-list"
+                  class="action-button">
+            <mat-icon>people</mat-icon>
+            <span>View Users</span>
+          </button>
+          
           <button mat-raised-button 
                   color="warn" 
                   (click)="onLogout()"
-                  class="logout-button">
+                  class="action-button logout-button">
             <mat-icon>logout</mat-icon>
             <span>Logout</span>
           </button>

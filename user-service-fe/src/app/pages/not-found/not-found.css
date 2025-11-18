@@ -1,0 +1,72 @@
+.not-found-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.not-found-card {
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.icon-container {
+  margin-bottom: 1.5rem;
+}
+
+.not-found-icon {
+  font-size: 80px;
+  width: 80px;
+  height: 80px;
+  color: #f44336;
+  margin-bottom: 1rem;
+}
+
+.error-code {
+  font-size: 6rem;
+  margin: 0;
+  color: #333;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.not-found-card h2 {
+  font-size: 2rem;
+  margin: 0.5rem 0 1rem 0;
+  color: #333;
+  font-weight: 600;
+}
+
+.message {
+  font-size: 1.2rem;
+  color: #666;
+  margin: 0.5rem 0;
+  font-weight: 500;
+}
+
+.sub-message {
+  font-size: 1rem;
+  color: #999;
+  margin: 0.5rem 0 2rem 0;
+}
+
+.actions-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+}
+
