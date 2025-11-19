@@ -4,12 +4,12 @@
       <h1>Hello</h1>
       <p>Welcome to User Service Frontend</p>
       
-      @if (isAuthenticated()) {
+      @if (isAuthenticated$ | async) {
         <div class="actions-section">
           <button mat-raised-button 
                   color="primary" 
                   (click)="viewProfile()"
-                  [disabled]="!currentUser"
+                  [disabled]="!(currentUser$ | async)"
                   class="action-button">
             <mat-icon>person</mat-icon>
             <span>Profile</span>

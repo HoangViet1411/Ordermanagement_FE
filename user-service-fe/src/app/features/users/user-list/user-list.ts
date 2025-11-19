@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
@@ -12,7 +12,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
-import { UserService, User, ApiResponse, PaginationMeta } from '../services/user.service';
+import { Store } from '@ngrx/store';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil, filter } from 'rxjs/operators';
+import { AppState } from '../../../store';
+import { selectUsers, selectUsersLoading, selectUsersError, selectUsersPagination } from '../../../store/users/selectors/users.selectors';
+import * as UsersActions from '../../../store/users/actions/users.actions';
+import { UserService, User, ApiResponse, PaginationMeta, UserListParams } from '../services/user.service';
 
 // Helper function to check if account is unverified
 function isUnverifiedAccount(userStatus: string, email?: string): boolean {
@@ -52,31 +58,65 @@ export interface UserTableItem {
   templateUrl: './user-list.html',
   styleUrl: './user-list.css'
 })
-export class UserListComponent implements OnInit {
+export class UserListComponent implements OnInit, OnDestroy {
   displayedColumns: string[] = ['id', 'name', 'email', 'status', 'actions'];
   dataSource = new MatTableDataSource<UserTableItem>([]);
   
-  loading = false;
+  loading$!: Observable<boolean>;
   searchTerm = '';
-  pagination: PaginationMeta | null = null;
+  pagination$!: Observable<PaginationMeta | null>;
   currentPage = 1;
   pageSize = 10;
+  private destroy$ = new Subject<void>();
 
   constructor(
+    private store: Store<AppState>,
     private userService: UserService,
     private snackBar: MatSnackBar
-  ) {}
+  ) {
+    this.loading$ = this.store.select(selectUsersLoading);
+    this.pagination$ = this.store.select(selectUsersPagination);
+  }
 
   ngOnInit(): void {
+    // Subscribe to users from store
+    this.store.select(selectUsers).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(users => {
+      // Transform data for table
+      this.dataSource.data = users.map(user => ({
+        id: user.id,
+        name: `${user.lastName} ${user.firstName}`,
+        email: user.account?.email || 'N/A',
+        enabled: user.account?.enabled || false,
+        userStatus: user.account?.userStatus || 'UNKNOWN',
+        isDeleted: !!user.deletedAt
+      }));
+    });
+
+    // Subscribe to errors
+    this.store.select(selectUsersError).pipe(
+      takeUntil(this.destroy$),
+      filter(error => error !== null)
+    ).subscribe(error => {
+      if (error) {
+        this.snackBar.open(error, 'Close', { duration: 5000 });
+      }
+    });
+
+    // Load users on init
     this.loadUsers();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   loadUsers(): void {
-    this.loading = true;
-    
     // Backend đã handle: search, pagination, filter deleted users, filter users có roles
     // Frontend chỉ cần gửi parameters và nhận kết quả đã được filter/paginate
-    const params: any = {
+    const params: UserListParams = {
       page: this.currentPage,
       limit: this.pageSize,
       includeAccount: 'true', // Include account info từ Cognito
@@ -88,40 +128,8 @@ export class UserListComponent implements OnInit {
       params.search = this.searchTerm.trim();
     }
 
-    this.userService.getUsers(params).subscribe({
-      next: (response: ApiResponse<User[]>) => {
-        if (response.success && response.data) {
-          // Backend đã filter users có roles (required: true trong INNER JOIN)
-          // Nên không cần filter lại ở frontend
-          
-          // Transform data for table
-          this.dataSource.data = response.data.map(user => ({
-            id: user.id,
-            name: `${user.lastName} ${user.firstName}`,
-            email: user.account?.email || 'N/A',
-            enabled: user.account?.enabled || false,
-            userStatus: user.account?.userStatus || 'UNKNOWN',
-            isDeleted: !!user.deletedAt
-          }));
-
-          // Dùng pagination từ backend thay vì tính client-side
-          this.pagination = response.pagination || null;
-        } else {
-          this.dataSource.data = [];
-          this.pagination = null;
-          if (!response.success) {
-            this.snackBar.open(response.message || 'No users found', 'Close', { duration: 3000 });
-          }
-        }
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('[UserList] Error loading users:', error);
-        const errorMsg = error?.error?.message || 'Failed to load users';
-        this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-        this.loading = false;
-      }
-    });
+    // Dispatch action to load users
+    this.store.dispatch(UsersActions.loadUsers({ params }));
   }
 
   onSearch(): void {
@@ -171,8 +179,6 @@ export class UserListComponent implements OnInit {
       : 'Are you sure you want to disable this account?';
     
     if (confirm(confirmMessage)) {
-      this.loading = true;
-      
       if (isDisabled) {
         // Restore user (enable)
         this.userService.restoreUser(user.id).subscribe({
@@ -190,14 +196,12 @@ export class UserListComponent implements OnInit {
                 'Close',
                 { duration: 5000 }
               );
-              this.loading = false;
             }
           },
           error: (error: any) => {
             console.error('Error restoring account:', error);
             const errorMsg = error?.error?.message || 'Failed to restore account';
             this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-            this.loading = false;
           }
         });
       } else {
@@ -217,14 +221,12 @@ export class UserListComponent implements OnInit {
                 'Close',
                 { duration: 5000 }
               );
-              this.loading = false;
             }
           },
           error: (error: any) => {
             console.error('Error disabling account:', error);
             const errorMsg = error?.error?.message || 'Failed to disable account';
             this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-            this.loading = false;
           }
         });
       }
@@ -233,8 +235,6 @@ export class UserListComponent implements OnInit {
 
   deleteAccount(user: UserTableItem): void {
     if (confirm(`Are you sure you want to permanently delete this account? This action cannot be undone and the user will be permanently removed from the system.`)) {
-      this.loading = true;
-      
       // Hard delete - xóa vĩnh viễn khỏi database
       this.userService.hardDeleteUser(user.id).subscribe({
         next: (response: ApiResponse<void>) => {
@@ -252,14 +252,12 @@ export class UserListComponent implements OnInit {
               'Close',
               { duration: 5000 }
             );
-            this.loading = false;
           }
         },
         error: (error: any) => {
           console.error('Error deleting account:', error);
           const errorMsg = error?.error?.message || 'Failed to delete account';
           this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-          this.loading = false;
         }
       });
     }

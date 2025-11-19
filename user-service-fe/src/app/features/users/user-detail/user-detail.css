@@ -322,33 +322,76 @@ mat-card-content {
 .roles-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
-.roles-container mat-chip {
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white !important;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-  transition: transform 0.2s ease;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+  transition: all 0.3s ease;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
 }
 
-.roles-container mat-chip ::ng-deep .mdc-evolution-chip__text-label {
-  color: white !important;
+.role-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
 }
 
-.roles-container ::ng-deep .mat-mdc-chip {
-  color: white !important;
+.role-badge:hover::before {
+  left: 100%;
 }
 
-.roles-container ::ng-deep .mat-mdc-chip .mdc-evolution-chip__text-label {
-  color: white !important;
+.role-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
 }
 
-.roles-container mat-chip:hover {
-  transform: scale(1.05);
+.role-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+.role-name {
+  text-transform: capitalize;
+  letter-spacing: 0.5px;
+}
+
+/* Admin role - Purple gradient */
+.role-badge.role-admin {
+  background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+}
+
+.role-badge.role-admin:hover {
+  box-shadow: 0 6px 16px rgba(156, 39, 176, 0.4);
+}
+
+/* User role - Blue gradient */
+.role-badge.role-user {
+  background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.role-badge.role-user:hover {
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
 }
 
 /* Animations */

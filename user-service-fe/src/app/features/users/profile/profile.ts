@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -13,7 +13,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
-import { UserService, User, Gender } from '../services/user.service';
+import { Store } from '@ngrx/store';
+import { Observable, Subject, combineLatest } from 'rxjs';
+import { takeUntil, take, filter, distinctUntilChanged, map, switchMap } from 'rxjs/operators';
+import { AppState } from '../../../store';
+import { selectCurrentUser, selectIsLoading } from '../../../store/auth/selectors/auth.selectors';
+import * as AuthActions from '../../../store/auth/actions/auth.actions';
+import { Gender } from '../services/user.service';
 
 @Component({
   selector: 'app-profile',
@@ -36,11 +42,13 @@ import { UserService, User, Gender } from '../services/user.service';
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
-export class ProfileComponent implements OnInit {
+export class ProfileComponent implements OnInit, OnDestroy {
   profileForm: FormGroup;
-  loading = false;
+  loading$!: Observable<boolean>;
   isEditMode = false;
-  currentUser: User | null = null;
+  currentUser$!: Observable<any>;
+  private destroy$ = new Subject<void>();
+  private hasSubmitted = false;
 
   genders = [
     { value: Gender.MALE, label: 'Male', icon: 'male' },
@@ -64,7 +72,7 @@ export class ProfileComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private userService: UserService,
+    private store: Store<AppState>,
     public router: Router,
     private route: ActivatedRoute,
     private snackBar: MatSnackBar
@@ -75,44 +83,97 @@ export class ProfileComponent implements OnInit {
       birth_date: [null],
       gender: [null]
     });
+    this.loading$ = this.store.select(selectIsLoading);
+    this.currentUser$ = this.store.select(selectCurrentUser);
   }
 
   ngOnInit(): void {
     // Check if edit mode from query params
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
       this.isEditMode = params['mode'] === 'edit';
     });
 
-    // Load current profile if exists
-    this.loadProfile();
-  }
-
-  loadProfile(): void {
-    this.loading = true;
-    this.userService.getCurrentProfile().subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.currentUser = response.data;
-          this.isEditMode = true;
-          // Populate form with existing data
-          this.profileForm.patchValue({
-            first_name: response.data.firstName,
-            last_name: response.data.lastName,
-            birth_date: response.data.birthDate ? new Date(response.data.birthDate) : null,
-            gender: response.data.gender
-          });
-        } else {
-          // No profile exists, create mode
-          this.isEditMode = false;
-        }
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error loading profile:', error);
-        this.snackBar.open('Failed to load profile', 'Close', { duration: 3000 });
-        this.loading = false;
+    // Đợi initAuth hoàn thành trước khi load profile
+    this.store.select(state => (state as AppState).auth.isInitialized).pipe(
+      filter(isInitialized => isInitialized === true),
+      take(1),
+      switchMap(() => combineLatest([
+        this.currentUser$,
+        this.store.select(state => (state as AppState).auth.isAuthenticated)
+      ]).pipe(take(1)))
+    ).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(([user, isAuthenticated]) => {
+      if (user) {
+        this.isEditMode = true;
+        // Populate form with existing data
+        this.profileForm.patchValue({
+          first_name: user.firstName,
+          last_name: user.lastName,
+          birth_date: user.birthDate ? new Date(user.birthDate) : null,
+          gender: user.gender
+        });
+      } else if (isAuthenticated) {
+        // Profile sẽ được load tự động bởi global effect
+        this.store.dispatch(AuthActions.loadProfileIfNeeded());
+      } else {
+        this.isEditMode = false;
       }
     });
+
+    // Listen for user updates after initial load
+    this.currentUser$.pipe(
+      takeUntil(this.destroy$),
+      filter(user => user !== null),
+      distinctUntilChanged((prev, curr) => prev?.id === curr?.id)
+    ).subscribe(user => {
+      if (user && !this.hasSubmitted) {
+        // Only populate form if we haven't submitted (initial load)
+        this.isEditMode = true;
+        this.profileForm.patchValue({
+          first_name: user.firstName,
+          last_name: user.lastName,
+          birth_date: user.birthDate ? new Date(user.birthDate) : null,
+          gender: user.gender
+        });
+      }
+    });
+
+    // Listen for update profile success/failure
+    combineLatest([
+      this.store.select(state => (state as AppState).auth.error),
+      this.store.select(state => (state as AppState).auth.isLoading),
+      this.currentUser$
+    ]).pipe(
+      takeUntil(this.destroy$),
+      map(([error, isLoading, user]) => ({ error, isLoading, user }))
+    ).subscribe(auth => {
+      // Show error if there's an error and we're not loading
+      if (auth.error && !auth.isLoading && this.hasSubmitted) {
+        this.snackBar.open(auth.error, 'Close', { duration: 5000 });
+        this.hasSubmitted = false;
+      }
+      
+      // Show success message if we just submitted and update was successful
+      if (this.hasSubmitted && auth.user && !auth.isLoading && !auth.error) {
+        this.snackBar.open(
+          this.isEditMode ? 'Profile updated successfully' : 'Profile created successfully',
+          'Close',
+          { duration: 3000 }
+        );
+        this.hasSubmitted = false;
+        setTimeout(() => {
+          this.router.navigate(['/']);
+        }, 1500);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   onSubmit(): void {
@@ -120,37 +181,16 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
-    this.loading = true;
+    this.hasSubmitted = true;
     const formValue = this.profileForm.value;
     const profileData = {
       first_name: formValue.first_name,
       last_name: formValue.last_name,
       birth_date: formValue.birth_date ? formValue.birth_date.toISOString().split('T')[0] : undefined,
-      gender: formValue.gender || undefined
+      gender: formValue.gender ? (formValue.gender as Gender) : undefined
     };
 
-    this.userService.createOrUpdateProfile(profileData).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.snackBar.open(
-            this.isEditMode ? 'Profile updated successfully' : 'Profile created successfully',
-            'Close',
-            { duration: 3000 }
-          );
-          // Redirect to homepage after 1.5s
-          setTimeout(() => {
-            this.router.navigate(['/']);
-          }, 1500);
-        }
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error saving profile:', error);
-        const errorMsg = error?.error?.message || 'Failed to save profile';
-        this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-        this.loading = false;
-      }
-    });
+    this.store.dispatch(AuthActions.updateProfile({ profileData }));
   }
 
   get first_name() {

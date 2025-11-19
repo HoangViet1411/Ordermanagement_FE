@@ -107,17 +107,25 @@ export class AuthService {
           );
         }
 
-        //  Check nếu isSignedIn === false và không có nextStep → có thể là lỗi
-        if (signInOutput.isSignedIn === false && !signInOutput.nextStep) {
-          console.warn('[AuthService] Sign in returned false without nextStep');
+        //  QUAN TRỌNG: Chỉ fetch session nếu isSignedIn === true
+        //  Nếu isSignedIn === false, có thể là:
+        //  1. Account chưa confirm email (đã được xử lý ở trên)
+        //  2. Credentials sai
+        //  3. Có nextStep khác cần xử lý
+        if (signInOutput.isSignedIn !== true) {
+          console.warn('[AuthService] Sign in not completed, isSignedIn:', signInOutput.isSignedIn);
+          console.warn('[AuthService] nextStep:', signInOutput.nextStep);
           return throwError(() => ({
             name: 'NotAuthorizedException',
-            message: 'Sign in failed. Please check your credentials.'
+            message: signInOutput.nextStep 
+              ? 'Sign in requires additional steps. Please check your account status.'
+              : 'Sign in failed. Please check your credentials.'
           }));
         }
 
-        //  Nếu đã signed in hoặc không có nextStep, tiếp tục fetch session
+        //  Nếu đã signed in (isSignedIn === true), tiếp tục fetch session
         // Amplify v6: signIn() có thể trả về tokens trực tiếp hoặc cần fetch session
+        console.log('[AuthService] User signed in successfully, fetching session...');
         return from(fetchAuthSession({ forceRefresh: true })).pipe(
           switchMap((session) => {
             console.log('[AuthService] Session after signIn:', session);

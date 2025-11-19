@@ -47,8 +47,8 @@
                   color="primary" 
                   type="submit" 
                   class="full-width"
-                  [disabled]="signInForm.invalid || isLoading">
-            @if (isLoading) {
+                  [disabled]="signInForm.invalid || (isLoading$ | async)">
+            @if (isLoading$ | async) {
               <mat-spinner diameter="20" class="spinner"></mat-spinner>
               <span>Signing in...</span>
             } @else {

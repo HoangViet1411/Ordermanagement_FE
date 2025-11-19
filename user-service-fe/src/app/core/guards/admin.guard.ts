@@ -1,52 +1,48 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
-import { AuthService } from '../services/auth.service';
+import { Store } from '@ngrx/store';
+import { map, take, switchMap, filter } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { AppState } from '../../store';
+import { selectIsAdmin, selectIsAuthenticated } from '../../store/auth/selectors/auth.selectors';
+import { checkAndLoadProfile } from './guard.helpers';
 
 /**
  * Guard để check xem user có role admin không
  * Nếu không có role admin, redirect đến trang permission
- * Sử dụng cached profile để tránh gọi API nhiều lần
+ * Sử dụng NgRx Store để check admin role
  */
-export const adminGuard: CanActivateFn = async (route, state) => {
+export const adminGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
-  const authService = inject(AuthService);
+  const store = inject(Store<AppState>);
 
-  try {
-    // Lấy profile từ cache trước (không gọi API)
-    let userProfile = authService.getCachedProfile();
-    
-    // Nếu chưa có cache, load profile từ API và lưu vào cache
-    if (!userProfile) {
-      const response = await firstValueFrom(authService.loadUserProfile());
-      if (!response.success || !response.data) {
-        console.warn('[AdminGuard] User profile not found or failed to retrieve');
-        router.navigate(['/permission']);
-        return false;
+  // Đợi initAuth hoàn thành trước khi check
+  return store.select(state => (state as AppState).auth.isInitialized).pipe(
+    filter(isInitialized => isInitialized === true),
+    take(1),
+    switchMap(() => store.select(selectIsAuthenticated).pipe(take(1))),
+    switchMap(isAuthenticated => {
+      if (!isAuthenticated) {
+        router.navigate(['/signin']);
+        return of(false);
       }
-      userProfile = response.data;
-    }
 
-    // Check xem user có role admin không
-    const userRoles = userProfile.roles || [];
-    const hasAdminRole = userRoles.some(
-      (role) => role.roleName?.toLowerCase() === 'admin'
-    );
-
-    if (!hasAdminRole) {
-      // User không có role admin, redirect đến trang permission
-      console.warn('[AdminGuard] User does not have admin role. Roles:', userRoles);
-      router.navigate(['/permission']);
-      return false;
-    }
-
-    // User có role admin, cho phép truy cập
-    return true;
-  } catch (error) {
-    // Lỗi khi gọi API (có thể là chưa đăng nhập, token hết hạn, etc.)
-    console.error('[AdminGuard] Error checking admin role:', error);
-    router.navigate(['/permission']);
-    return false;
-  }
+      // Load profile vào store (nếu chưa có) để selectIsAdmin có data
+      // Profile redirect được xử lý bởi global effect
+      // Nếu user không có profile → effect sẽ redirect đến /profile?mode=create
+      // Nếu user có profile nhưng không phải admin → redirect đến /permission
+      return checkAndLoadProfile(store).pipe(
+              switchMap(() => store.select(selectIsAdmin).pipe(take(1))),
+              map(isAdmin => {
+                if (!isAdmin) {
+                  console.warn('[AdminGuard] User does not have admin role');
+                  router.navigate(['/permission']);
+                  return false;
+                }
+                return true;
+        })
+      );
+    })
+  );
 };
 

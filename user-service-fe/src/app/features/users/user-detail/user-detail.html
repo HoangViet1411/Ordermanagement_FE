@@ -1,13 +1,13 @@
 <div class="user-detail-container">
-  @if (loading) {
+  @if (loading$ | async) {
     <div class="loading-container">
       <mat-spinner diameter="50"></mat-spinner>
       <p>Loading user details...</p>
     </div>
-  } @else if (user) {
+  } @else if (user$ | async; as user) {
     <div class="header-section">
       <div class="header-content">
-        <button mat-icon-button (click)="router.navigate(['/user-list'])" class="back-button">
+        <button mat-icon-button (click)="goBack()" class="back-button">
           <mat-icon>arrow_back</mat-icon>
         </button>
         <div class="title-section">
@@ -30,11 +30,11 @@
               </div>
             </div>
             <div class="user-info-section">
-              <h2 class="user-name">{{ fullName }}</h2>
+              <h2 class="user-name">{{ getFullName(user) }}</h2>
               <div class="user-meta">
                 <span class="user-id">#{{ user.id }}</span>
                 <span class="divider">•</span>
-                <span [class]="'status-badge ' + getStatusClass()">{{ getStatusText() }}</span>
+                <span [class]="'status-badge ' + getStatusClass(user)">{{ getStatusText(user) }}</span>
               </div>
             </div>
           </div>
@@ -43,8 +43,8 @@
               <button 
                 mat-raised-button 
                 [color]="user.isDeleted ? 'primary' : 'warn'"
-                (click)="toggleAccountStatus()"
-                [disabled]="loading"
+                (click)="toggleAccountStatus(user)"
+                [disabled]="loading$ | async"
                 class="action-button">
                 <mat-icon>{{ user.isDeleted ? 'check_circle' : 'block' }}</mat-icon>
                 <span>{{ user.isDeleted ? 'Restore Account' : 'Disable Account' }}</span>
@@ -52,8 +52,8 @@
               <button 
                 mat-raised-button 
                 color="warn"
-                (click)="deleteAccount()"
-                [disabled]="loading"
+                (click)="deleteAccount(user)"
+                [disabled]="loading$ | async"
                 class="action-button">
                 <mat-icon>delete_forever</mat-icon>
                 <span>Delete Permanently</span>
@@ -73,8 +73,8 @@
                   <span>Personal Information</span>
                 </span>
                 <button mat-icon-button 
-                        (click)="editPersonalInfo()" 
-                        [disabled]="loading"
+                        (click)="editPersonalInfo(user)" 
+                        [disabled]="loading$ | async"
                         class="edit-button"
                         matTooltip="Edit Personal Information">
                   <mat-icon>edit</mat-icon>
@@ -90,7 +90,7 @@
               </div>
               <div class="detail-item">
                 <span class="label">Gender:</span>
-                <span class="value">{{ genderLabel }}</span>
+                <span class="value">{{ getGenderLabel(user) }}</span>
               </div>
               <div class="detail-item">
                 <span class="label">Birth Date:</span>
@@ -107,15 +107,15 @@
                 </span>
                 <div class="section-actions">
                   <button mat-icon-button 
-                          (click)="editEmail()" 
-                          [disabled]="loading"
+                          (click)="editEmail(user)" 
+                          [disabled]="loading$ | async"
                           class="edit-button"
                           matTooltip="Edit Email">
                     <mat-icon>email</mat-icon>
                   </button>
                   <button mat-icon-button 
-                          (click)="changePassword()" 
-                          [disabled]="loading"
+                          (click)="changePassword(user)" 
+                          [disabled]="loading$ | async"
                           class="edit-button"
                           matTooltip="Change Password">
                     <mat-icon>lock</mat-icon>
@@ -128,7 +128,7 @@
               </div>
               <div class="detail-item">
                 <span class="label">Account Status:</span>
-                <span [class]="getAccountStatusClass() ? 'status-badge ' + getAccountStatusClass() : ''">{{ getAccountStatusText() }}</span>
+                <span [class]="getAccountStatusClass(user) ? 'status-badge ' + getAccountStatusClass(user) : ''">{{ getAccountStatusText(user) }}</span>
               </div>
               <div class="detail-item">
                 <span class="label">User Status:</span>
@@ -147,7 +147,10 @@
               </h3>
                 <div class="roles-container">
                   @for (role of user.roles; track role.id) {
-                    <mat-chip>{{ role.roleName }}</mat-chip>
+                    <div class="role-badge" [class.role-admin]="role.roleName.toLowerCase() === 'admin'" [class.role-user]="role.roleName.toLowerCase() === 'user'">
+                      <mat-icon class="role-icon">{{ role.roleName.toLowerCase() === 'admin' ? 'admin_panel_settings' : 'person' }}</mat-icon>
+                      <span class="role-name">{{ role.roleName }}</span>
+                    </div>
                   }
                 </div>
               </div>

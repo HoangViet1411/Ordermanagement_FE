@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -8,24 +8,18 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { FormsModule } from '@angular/forms';
-import { UserService, User, Gender, ApiResponse } from '../services/user.service';
-import { AuthService } from '../../../core/services/auth.service';
-
-// Helper function to check if account is unverified
-function isUnverifiedAccount(userStatus: string, email?: string): boolean {
-  const status = (userStatus || '').toUpperCase();
-  return status === 'UNCONFIRMED' || 
-         status === 'FORCE_CHANGE_PASSWORD' ||
-         (status === 'UNKNOWN' && (!email || email === 'N/A'));
-}
+import { UserService, User, ApiResponse } from '../services/user.service';
+import { Store } from '@ngrx/store';
+import { Observable, combineLatest, Subject, of } from 'rxjs';
+import { handleError } from '../utils/error-handler.helper';
+import { take, switchMap, filter, takeUntil } from 'rxjs/operators';
+import { AppState } from '../../../store';
+import { selectIsAdmin, selectCurrentUser, selectIsAuthenticated } from '../../../store/auth/selectors/auth.selectors';
+import { selectSelectedUser, selectUsersLoading, selectUsersError } from '../../../store/users/selectors/users.selectors';
+import * as AuthActions from '../../../store/auth/actions/auth.actions';
+import * as UsersActions from '../../../store/users/actions/users.actions';
+import { calculateUserStatus } from '../utils/user-status.helper';
 
 @Component({
   selector: 'app-user-detail',
@@ -33,7 +27,6 @@ function isUnverifiedAccount(userStatus: string, email?: string): boolean {
   imports: [
     CommonModule,
     RouterModule,
-    FormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -41,37 +34,44 @@ function isUnverifiedAccount(userStatus: string, email?: string): boolean {
     MatSnackBarModule,
     MatChipsModule,
     MatDividerModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
     MatTooltipModule
   ],
   templateUrl: './user-detail.html',
   styleUrl: './user-detail.css'
 })
-export class UserDetailComponent implements OnInit {
-  user: User | null = null;
-  loading = false;
+export class UserDetailComponent implements OnInit, OnDestroy {
+  user$!: Observable<User | null>;
+  loading$!: Observable<boolean>;
   userId: number | null = null;
   isAdmin = false;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private userService: UserService,
     public router: Router,
     private route: ActivatedRoute,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog,
-    private authService: AuthService
-  ) {}
+    private store: Store<AppState>
+  ) {
+    this.user$ = this.store.select(selectSelectedUser);
+    this.loading$ = this.store.select(selectUsersLoading);
+  }
 
   ngOnInit(): void {
     // Check if current user is admin
     this.checkAdminRole();
     
-    this.route.params.subscribe(params => {
+    // Subscribe to errors
+    this.store.select(selectUsersError).pipe(
+      takeUntil(this.destroy$),
+      filter(error => error !== null)
+    ).subscribe(error => {
+      this.snackBar.open(error!, 'Close', { duration: 5000 });
+    });
+    
+    this.route.params.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
       const id = +params['id'];
       if (id) {
         this.userId = id;
@@ -83,274 +83,145 @@ export class UserDetailComponent implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    // Clear selected user when leaving component
+    this.store.dispatch(UsersActions.clearSelectedUser());
+  }
+
   checkAdminRole(): void {
-    const currentUser = this.authService.getCachedProfile();
-    if (currentUser && currentUser.roles) {
-      this.isAdmin = currentUser.roles.some(
-        (role) => role.roleName?.toLowerCase() === 'admin'
-      );
-    } else {
-      // If not cached, load profile
-      this.authService.loadUserProfile().subscribe({
-        next: (response) => {
-          if (response.success && response.data && response.data.roles) {
-            this.isAdmin = response.data.roles.some(
-              (role) => role.roleName?.toLowerCase() === 'admin'
-            );
-          }
-        },
-        error: (error) => {
-          console.warn('[UserDetail] Failed to load current user profile:', error);
-          this.isAdmin = false;
+    // Đợi initAuth hoàn thành trước khi check admin role
+    this.store.select(state => (state as AppState).auth.isInitialized).pipe(
+      filter(isInitialized => isInitialized === true),
+      take(1),
+      switchMap(() => combineLatest([
+        this.store.select(selectCurrentUser),
+        this.store.select(selectIsAuthenticated)
+      ]).pipe(take(1))),
+      switchMap(([user, isAuthenticated]) => {
+        if (!user && isAuthenticated) {
+          // Profile sẽ được load tự động bởi global effect, chỉ cần đợi
+          this.store.dispatch(AuthActions.loadProfileIfNeeded());
+          return this.store.select(selectCurrentUser).pipe(
+            filter(u => u !== null),
+            take(1),
+            switchMap(() => this.store.select(selectIsAdmin).pipe(take(1)))
+          );
+        } else if (user) {
+          // User already in store, check admin role
+          return this.store.select(selectIsAdmin).pipe(take(1));
+        } else {
+          // Not authenticated
+          return of(false);
         }
-      });
-    }
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe(isAdmin => {
+      this.isAdmin = isAdmin;
+    });
   }
 
   loadUser(): void {
     if (!this.userId) return;
 
-    this.loading = true;
-    
-    // Load user data and account info in parallel
-    this.userService.getUserById(this.userId).subscribe({
-      next: (response: ApiResponse<User>) => {
-        if (response.success && response.data) {
-          this.user = response.data;
-          
-          // Load account info separately if not included
-          if (!this.user.account && this.userId) {
-            this.userService.getAccountInfo(this.userId).subscribe({
-              next: (accountResponse: ApiResponse<any>) => {
-                if (accountResponse.success && accountResponse.data) {
-                  this.user = {
-                    ...this.user!,
-                    account: {
-                      userId: accountResponse.data.userId,
-                      email: accountResponse.data.email,
-                      enabled: accountResponse.data.enabled,
-                      userStatus: accountResponse.data.userStatus
-                    }
-                  };
-                }
-                this.loading = false;
-              },
-              error: (accountError) => {
-                console.warn('[UserDetail] Failed to load account info:', accountError);
-                // Continue even if account info fails
-                this.loading = false;
-              }
-            });
-          } else {
-            this.loading = false;
-          }
-        } else {
-          this.snackBar.open(response.message || 'User not found', 'Close', { duration: 3000 });
-          this.router.navigate(['/user-list']);
-          this.loading = false;
-        }
-      },
-      error: (error) => {
-        console.error('[UserDetail] Error loading user:', error);
-        const errorMsg = error?.error?.message || 'Failed to load user';
-        this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-        this.loading = false;
-        this.router.navigate(['/user-list']);
+    // Check if user is already in store and matches current userId
+    this.store.select(selectSelectedUser).pipe(
+      take(1)
+    ).subscribe(selectedUser => {
+      if (selectedUser && selectedUser.id === this.userId) {
+        // User already loaded in store, no need to reload
+        return;
       }
+      
+      // Dispatch action to load user detail
+      this.store.dispatch(UsersActions.loadUserDetail({ userId: this.userId! }));
     });
   }
 
-  get fullName(): string {
-    if (!this.user) return '';
-    return `${this.user.lastName} ${this.user.firstName}`.trim();
+  getFullName(user: User | null): string {
+    if (!user) return '';
+    return `${user.lastName} ${user.firstName}`.trim();
   }
 
-  get genderLabel(): string {
-    if (!this.user?.gender) return 'Not specified';
-    return this.user.gender.charAt(0).toUpperCase() + this.user.gender.slice(1);
+  getGenderLabel(user: User | null): string {
+    if (!user?.gender) return 'Not specified';
+    return user.gender.charAt(0).toUpperCase() + user.gender.slice(1);
   }
 
-  getStatusClass(): string {
-    if (!this.user) return '';
-    
-    // Check if user is soft deleted (deletedAt is not null)
-    if (this.user.deletedAt || this.user.isDeleted) {
-      return 'status-disabled';
-    }
-    
-    // Check if account doesn't have email - show as unverified
-    if (!this.user.account || !this.user.account.email || this.user.account.email === 'N/A') {
-      return 'status-unverified';
-    }
-    
-    // Check if account exists and is unverified
-    if (this.user.account && isUnverifiedAccount(this.user.account.userStatus || '', this.user.account.email)) {
-      return 'status-unverified';
-    }
-    
-    // Check account enabled status
-    if (this.user.account) {
-      return this.user.account.enabled ? 'status-enabled' : 'status-disabled';
-    }
-    
-    // If no account info, default to unverified
-    return 'status-unverified';
+  getStatusClass(user: User | null): string {
+    return calculateUserStatus(user, false).class;
   }
 
-  getStatusText(): string {
-    if (!this.user) return '';
-    
-    // Check if user is soft deleted
-    if (this.user.deletedAt || this.user.isDeleted) {
-      return 'Disabled';
-    }
-    
-    // Check if account doesn't have email - show as unverified
-    if (!this.user.account || !this.user.account.email || this.user.account.email === 'N/A') {
-      return 'Unverified';
-    }
-    
-    // Check if account exists and is unverified
-    if (this.user.account && isUnverifiedAccount(this.user.account.userStatus || '', this.user.account.email)) {
-      return 'Unverified';
-    }
-    
-    // Check account enabled status
-    if (this.user.account) {
-      return this.user.account.enabled ? 'Active' : 'Disabled';
-    }
-    
-    // If no account info, default to unverified
-    return 'Unverified';
+  getStatusText(user: User | null): string {
+    return calculateUserStatus(user, false).text;
   }
 
   // Method for Account Status in Account Information card - shows N/A if no email
-  getAccountStatusClass(): string {
-    if (!this.user) return '';
-    
-    // Check if user is soft deleted
-    if (this.user.deletedAt || this.user.isDeleted) {
-      return 'status-disabled';
-    }
-    
-    // If no email, return empty class (will show N/A)
-    if (!this.user.account || !this.user.account.email || this.user.account.email === 'N/A') {
-      return '';
-    }
-    
-    // Check if account exists and is unverified
-    if (this.user.account && isUnverifiedAccount(this.user.account.userStatus || '', this.user.account.email)) {
-      return 'status-unverified';
-    }
-    
-    // Check account enabled status
-    if (this.user.account) {
-      return this.user.account.enabled ? 'status-enabled' : 'status-disabled';
-    }
-    
-    // If no account info, return empty (will show N/A)
-    return '';
+  getAccountStatusClass(user: User | null): string {
+    return calculateUserStatus(user, true).class;
   }
 
-  getAccountStatusText(): string {
-    if (!this.user) return 'N/A';
-    
-    // Check if user is soft deleted
-    if (this.user.deletedAt || this.user.isDeleted) {
-      return 'Disabled';
-    }
-    
-    // If no email, show N/A
-    if (!this.user.account || !this.user.account.email || this.user.account.email === 'N/A') {
-      return 'N/A';
-    }
-    
-    // Check if account exists and is unverified
-    if (this.user.account && isUnverifiedAccount(this.user.account.userStatus || '', this.user.account.email)) {
-      return 'Unverified';
-    }
-    
-    // Check account enabled status
-    if (this.user.account) {
-      return this.user.account.enabled ? 'Active' : 'Disabled';
-    }
-    
-    // If no account info, show N/A
-    return 'N/A';
+  getAccountStatusText(user: User | null): string {
+    return calculateUserStatus(user, true).text;
   }
 
-  toggleAccountStatus(): void {
-    if (!this.user) return;
+  toggleAccountStatus(user: User): void {
+    if (!user) return;
 
-    const isDisabled = !!this.user.isDeleted;
+    const isDisabled = !!user.isDeleted;
     const confirmMessage = isDisabled 
       ? 'Are you sure you want to restore (enable) this account?'
       : 'Are you sure you want to disable this account?';
     
     if (confirm(confirmMessage)) {
-      this.loading = true;
-      
       if (isDisabled) {
-        this.userService.restoreUser(this.user.id).subscribe({
+        this.userService.restoreUser(user.id).subscribe({
           next: (response: ApiResponse<{ message: string }>) => {
             if (response.success) {
               this.snackBar.open('Account restored successfully', 'Close', { duration: 3000 });
               this.loadUser();
             } else {
               this.snackBar.open(response.message || 'Failed to restore account', 'Close', { duration: 5000 });
-              this.loading = false;
             }
           },
           error: (error: any) => {
-            console.error('Error restoring account:', error);
-            const errorMsg = error?.error?.message || 'Failed to restore account';
-            this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-            this.loading = false;
+            handleError(error, this.snackBar, 'Failed to restore account', 'Error restoring account:');
           }
         });
       } else {
-        this.userService.deleteUser(this.user.id).subscribe({
+        this.userService.deleteUser(user.id).subscribe({
           next: (response: ApiResponse<void>) => {
             if (response.success) {
               this.snackBar.open('Account disabled successfully', 'Close', { duration: 3000 });
               this.loadUser();
             } else {
               this.snackBar.open(response.message || 'Failed to disable account', 'Close', { duration: 5000 });
-              this.loading = false;
             }
           },
           error: (error: any) => {
-            console.error('Error disabling account:', error);
-            const errorMsg = error?.error?.message || 'Failed to disable account';
-            this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-            this.loading = false;
+            handleError(error, this.snackBar, 'Failed to disable account', 'Error disabling account:');
           }
         });
       }
     }
   }
 
-  deleteAccount(): void {
-    if (!this.user) return;
+  deleteAccount(user: User): void {
+    if (!user) return;
 
     if (confirm(`Are you sure you want to permanently delete this account? This action cannot be undone and the user will be permanently removed from the system.`)) {
-      this.loading = true;
-      
-      this.userService.hardDeleteUser(this.user.id).subscribe({
+      this.userService.hardDeleteUser(user.id).subscribe({
         next: (response: ApiResponse<void>) => {
           if (response.success) {
             this.snackBar.open('Account permanently deleted', 'Close', { duration: 3000 });
             this.router.navigate(['/user-list']);
           } else {
             this.snackBar.open(response.message || 'Failed to delete account', 'Close', { duration: 5000 });
-            this.loading = false;
           }
         },
         error: (error: any) => {
-          console.error('Error deleting account:', error);
-          const errorMsg = error?.error?.message || 'Failed to delete account';
-          this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
-          this.loading = false;
+          handleError(error, this.snackBar, 'Failed to delete account', 'Error deleting account:');
         }
       });
     }
@@ -382,18 +253,23 @@ export class UserDetailComponent implements OnInit {
     return statusMap[status.toUpperCase()] || status;
   }
 
-  editPersonalInfo(): void {
-    if (!this.user) return;
-    this.router.navigate(['/users', this.user.id, 'edit', 'personal']);
+  editPersonalInfo(user: User): void {
+    if (!user) return;
+    this.router.navigate(['/users', user.id, 'edit', 'personal']);
   }
 
-  editEmail(): void {
-    if (!this.user) return;
-    this.router.navigate(['/users', this.user.id, 'edit', 'account']);
+  editEmail(user: User): void {
+    if (!user) return;
+    this.router.navigate(['/users', user.id, 'edit', 'account']);
   }
 
-  changePassword(): void {
-    if (!this.user) return;
-    this.router.navigate(['/users', this.user.id, 'edit', 'password']);
+  changePassword(user: User): void {
+    if (!user) return;
+    this.router.navigate(['/users', user.id, 'edit', 'password']);
+  }
+
+  goBack(): void {
+    // Quay về user-list
+    this.router.navigate(['/user-list']);
   }
 }

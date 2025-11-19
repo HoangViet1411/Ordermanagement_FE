@@ -4,7 +4,7 @@
       <div class="avatar-circle">
         <span class="avatar-initials">{{ initials }}</span>
       </div>
-      @if (currentUser && isEditMode) {
+      @if ((currentUser$ | async) && isEditMode) {
         <div class="edit-badge">
           <mat-icon>edit</mat-icon>
         </div>
@@ -22,7 +22,7 @@
 
   <mat-card class="profile-card">
     <mat-card-content>
-      @if (loading) {
+      @if (loading$ | async) {
         <div class="loading-container">
           <mat-spinner diameter="50"></mat-spinner>
           <p>Loading profile...</p>
@@ -96,7 +96,7 @@
               type="button" 
               (click)="router.navigate(['/'])" 
               class="cancel-button"
-              [disabled]="loading">
+              [disabled]="loading$ | async">
               <mat-icon>close</mat-icon>
               Cancel
             </button>
@@ -104,9 +104,9 @@
               mat-raised-button 
               color="primary" 
               type="submit" 
-              [disabled]="profileForm.invalid || loading"
+              [disabled]="profileForm.invalid || (loading$ | async)"
               class="submit-button">
-              @if (loading) {
+              @if (loading$ | async) {
                 <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
               } @else {
                 <mat-icon>{{ isEditMode ? 'save' : 'check_circle' }}</mat-icon>

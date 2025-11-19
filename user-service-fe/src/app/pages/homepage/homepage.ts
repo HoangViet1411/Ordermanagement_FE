@@ -1,77 +1,70 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { AuthService } from '../../core/services/auth.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { User } from '../../features/users/services/user.service';
+import { Store } from '@ngrx/store';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil, take } from 'rxjs/operators';
+import { AppState } from '../../store';
+import { selectCurrentUser, selectIsAuthenticated } from '../../store/auth/selectors/auth.selectors';
+import * as AuthActions from '../../store/auth/actions/auth.actions';
 
 @Component({
   selector: 'app-homepage',
   standalone: true,
-  imports: [RouterModule, MatCardModule, MatButtonModule, MatIconModule, MatSnackBarModule],
+  imports: [CommonModule, RouterModule, MatCardModule, MatButtonModule, MatIconModule, MatSnackBarModule],
   templateUrl: './homepage.html',
   styleUrl: './homepage.css'
 })
-export class HomepageComponent implements OnInit {
-  currentUser: User | null = null;
+export class HomepageComponent implements OnInit, OnDestroy {
+  currentUser$!: Observable<any>;
+  isAuthenticated$!: Observable<boolean>;
+  private destroy$ = new Subject<void>();
 
   constructor(
-    private authService: AuthService,
+    private store: Store<AppState>,
     private snackBar: MatSnackBar,
     private router: Router
-  ) {}
+  ) {
+    this.currentUser$ = this.store.select(selectCurrentUser);
+    this.isAuthenticated$ = this.store.select(selectIsAuthenticated);
+  }
 
   ngOnInit(): void {
-    // Load current user profile to get user ID
-    const cachedProfile = this.authService.getCachedProfile();
-    if (cachedProfile) {
-      this.currentUser = cachedProfile;
-    } else {
-      this.authService.loadUserProfile().subscribe({
-        next: (response) => {
-          if (response.success && response.data) {
-            this.currentUser = response.data;
-          }
-        },
-        error: (error) => {
-          console.warn('[Homepage] Failed to load user profile:', error);
-        }
-      });
-    }
+    // Profile được load tự động bởi global effect
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   viewProfile(): void {
-    if (this.currentUser?.id) {
-      this.router.navigate(['/users', this.currentUser.id]);
-    }
-  }
-
-  onLogout(): void {
-    this.authService.logout().subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.snackBar.open('Logged out successfully!', '✓', {
-            duration: 1500,
-            panelClass: ['success-snackbar'],
-            horizontalPosition: 'center',
-            verticalPosition: 'top'
-          });
-        }
-      },
-      error: (error) => {
-        this.snackBar.open('Logout failed. Please try again.', '✕', {
-          duration: 2500,
-          panelClass: ['error-snackbar'],
-          horizontalPosition: 'center',
-          verticalPosition: 'top'
-        });
+    this.currentUser$.pipe(
+      take(1),
+      takeUntil(this.destroy$)
+    ).subscribe(user => {
+      if (user?.id) {
+        this.router.navigate(['/users', user.id]);
       }
     });
   }
 
-  isAuthenticated(): boolean {
-    return this.authService.isAuthenticated();
+  onLogout(): void {
+    this.store.dispatch(AuthActions.signOut());
+    // Success message will be handled by effect (redirect to signin)
+    this.snackBar.open('Logged out successfully!', '✓', {
+      duration: 1500,
+      panelClass: ['success-snackbar'],
+      horizontalPosition: 'center',
+      verticalPosition: 'top'
+    });
+  }
+
+  isAuthenticated(): Observable<boolean> {
+    return this.isAuthenticated$;
   }
 }

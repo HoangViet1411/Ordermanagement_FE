@@ -12,6 +12,9 @@ import { adminGuard } from './core/guards/admin.guard';
 import { userDetailGuard } from './core/guards/user-detail.guard';
 import { UserListComponent } from './features/users/user-list/user-list';
 import { UserDetailComponent } from './features/users/user-detail/user-detail';
+import { EditPersonalComponent } from './features/users/edit-personal/edit-personal';
+import { EditAccountComponent } from './features/users/edit-account/edit-account';
+import { EditPasswordComponent } from './features/users/edit-password/edit-password';
 
 export const routes: Routes = [
   {
@@ -39,24 +42,24 @@ export const routes: Routes = [
     canActivate: [authGuard] // Chỉ user đã đăng nhập mới được vào
   },
   {
-    path: 'users/:id',
-    component: UserDetailComponent,
-    canActivate: [userDetailGuard] // Admin hoặc user xem detail của chính mình
-  },
-  {
     path: 'users/:id/edit/personal',
-    component: NotFoundComponent, // Placeholder - sẽ tạo component sau
+    component: EditPersonalComponent,
     canActivate: [userDetailGuard] // Admin hoặc user edit thông tin của chính mình
   },
   {
     path: 'users/:id/edit/account',
-    component: NotFoundComponent, // Placeholder - sẽ tạo component sau
+    component: EditAccountComponent,
     canActivate: [userDetailGuard] // Admin hoặc user edit thông tin của chính mình
   },
   {
     path: 'users/:id/edit/password',
-    component: NotFoundComponent, // Placeholder - sẽ tạo component sau
+    component: EditPasswordComponent,
     canActivate: [userDetailGuard] // Admin hoặc user edit thông tin của chính mình
+  },
+  {
+    path: 'users/:id',
+    component: UserDetailComponent,
+    canActivate: [userDetailGuard] // Admin hoặc user xem detail của chính mình
   },
   {
     path: 'permission',

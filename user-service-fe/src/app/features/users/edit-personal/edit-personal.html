@@ -1,0 +1,121 @@
+<div class="edit-personal-container">
+    <div class="edit-personal-header">
+      <div class="profile-avatar">
+        <div class="avatar-circle">
+          <span class="avatar-initials">
+            @if (currentUser$ | async; as user) {
+              {{ getInitials(user) }}
+            } @else {
+              {{ getInitials(null) }}
+            }
+          </span>
+        </div>
+        <div class="edit-badge">
+          <mat-icon>edit</mat-icon>
+        </div>
+      </div>
+      <h1 class="edit-personal-title">Edit Personal Information</h1>
+      <p class="edit-personal-subtitle">
+        Update your personal details
+      </p>
+    </div>
+  
+    <mat-card class="edit-personal-card">
+      <mat-card-content>
+        @if (loading$ | async) {
+          <div class="loading-container">
+            <mat-spinner diameter="50"></mat-spinner>
+            <p>Loading user information...</p>
+          </div>
+        } @else {
+          <form [formGroup]="personalForm" (ngSubmit)="onSubmit()" class="personal-form">
+            <div class="form-section">
+              <div class="section-header">
+                <mat-icon class="section-icon">person</mat-icon>
+                <h2>Personal Information</h2>
+              </div>
+              
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>First Name</mat-label>
+                  <input matInput formControlName="first_name" placeholder="Enter first name" required>
+                  <mat-icon matPrefix>badge</mat-icon>
+                  <mat-error *ngIf="first_name?.hasError('required')">
+                    First name is required
+                  </mat-error>
+                </mat-form-field>
+  
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>Last Name</mat-label>
+                  <input matInput formControlName="last_name" placeholder="Enter last name" required>
+                  <mat-icon matPrefix>badge</mat-icon>
+                  <mat-error *ngIf="last_name?.hasError('required')">
+                    Last name is required
+                  </mat-error>
+                </mat-form-field>
+              </div>
+            </div>
+  
+            <mat-divider class="form-divider"></mat-divider>
+  
+            <div class="form-section">
+              <div class="section-header">
+                <mat-icon class="section-icon">calendar_today</mat-icon>
+                <h2>Additional Details</h2>
+              </div>
+              
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>Birth Date</mat-label>
+                  <input matInput [matDatepicker]="picker" formControlName="birth_date" placeholder="Select birth date">
+                  <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                  <mat-datepicker #picker></mat-datepicker>
+                  <mat-icon matPrefix>cake</mat-icon>
+                  <mat-hint>Optional</mat-hint>
+                </mat-form-field>
+  
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>Gender</mat-label>
+                  <mat-select formControlName="gender" placeholder="Select gender">
+                    <mat-option [value]="null">
+                      Not specified
+                    </mat-option>
+                    <mat-option *ngFor="let gender of genders" [value]="gender.value">
+                      {{ gender.label }}
+                    </mat-option>
+                  </mat-select>
+                  <mat-icon matPrefix>wc</mat-icon>
+                  <mat-hint>Optional</mat-hint>
+                </mat-form-field>
+              </div>
+            </div>
+  
+            <div class="form-actions">
+              <button 
+                mat-button 
+                type="button" 
+                (click)="onCancel()" 
+                class="cancel-button"
+                [disabled]="loading$ | async">
+                <mat-icon>close</mat-icon>
+                Cancel
+              </button>
+              <button 
+                mat-raised-button 
+                color="primary" 
+                type="submit" 
+                [disabled]="personalForm.invalid || (loading$ | async)"
+                class="submit-button">
+                @if (loading$ | async) {
+                  <mat-spinner diameter="20" class="button-spinner"></mat-spinner>
+                } @else {
+                  <mat-icon>save</mat-icon>
+                }
+                Save Changes
+              </button>
+            </div>
+          </form>
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
