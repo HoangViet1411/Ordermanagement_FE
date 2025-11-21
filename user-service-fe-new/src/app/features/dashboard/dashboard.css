@@ -1,0 +1,43 @@
+.dashboard {
+  padding: 2rem;
+  min-height: 100vh;
+  background: #f5f6f8;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: #1a1a1a;
+}
+
+.logout-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #d92d20;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.logout-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.logout-btn:disabled {
+  background: #a5b0d3;
+  cursor: not-allowed;
+}

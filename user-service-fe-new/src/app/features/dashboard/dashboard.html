@@ -1,0 +1,8 @@
+<div class="dashboard">
+  <div class="header">
+    <h1>Hello</h1>
+    <button (click)="logout()" [disabled]="loading()" class="logout-btn">
+      {{ loading() ? 'Logging out...' : 'Logout' }}
+    </button>
+  </div>
+</div>

@@ -1,0 +1,41 @@
+<div class="page">
+  <form class="card" [formGroup]="form" (ngSubmit)="submit()">
+    <h1>Sign Up</h1>
+
+    <label>Email</label>
+    <input type="email" formControlName="email" placeholder="you@example.com" />
+    <div class="error" *ngIf="form.controls['email'].touched && form.controls['email'].invalid">
+      <span *ngIf="form.controls['email'].errors?.['required']">Email là bắt buộc</span>
+      <span *ngIf="form.controls['email'].errors?.['email']">Email không hợp lệ</span>
+    </div>
+
+    <label>Password</label>
+    <input type="password" formControlName="password" placeholder="••••••••" />
+    <div class="error" *ngIf="form.controls['password'].touched && form.controls['password'].invalid">
+      <span *ngIf="form.controls['password'].errors?.['required']">Mật khẩu là bắt buộc</span>
+      <span *ngIf="form.controls['password'].errors?.['minlength']">Mật khẩu phải có ít nhất 6 ký tự</span>
+    </div>
+
+    <label>Confirm Password</label>
+    <input type="password" formControlName="confirmPassword" placeholder="••••••••" />
+    <div class="error" *ngIf="form.controls['confirmPassword'].touched && form.controls['confirmPassword'].invalid">
+      <span *ngIf="form.controls['confirmPassword'].errors?.['required']">Xác nhận mật khẩu là bắt buộc</span>
+    </div>
+    <div class="error" *ngIf="form.touched && form.errors?.['passwordMismatch']">
+      Mật khẩu xác nhận không khớp
+    </div>
+
+    <div class="error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+
+    <button type="submit" [disabled]="form.invalid || loading()">
+      {{ loading() ? 'Đang đăng ký...' : 'Đăng ký' }}
+    </button>
+
+    <!-- Link to sign in -->
+    <div style="text-align: center; margin-top: 1rem;">
+      <a routerLink="/signin" style="color: #667eea; text-decoration: none;">
+        Đã có tài khoản? Đăng nhập
+      </a>
+    </div>
+  </form>
+</div>

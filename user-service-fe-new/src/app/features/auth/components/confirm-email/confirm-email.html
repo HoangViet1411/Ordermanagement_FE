@@ -1,0 +1,48 @@
+<div class="page">
+    <form class="card" [formGroup]="form" (ngSubmit)="submit()">
+      <h1>Xác nhận Email</h1>
+      
+      <p style="font-size: 14px; color: #666; margin-bottom: 16px;">
+        Chúng tôi đã gửi mã xác nhận đến <strong>{{ email() }}</strong>
+      </p>
+  
+      <label>Mã xác nhận</label>
+      <input 
+        type="text" 
+        formControlName="code" 
+        placeholder="Nhập 6 số" 
+        maxlength="6"
+        autocomplete="one-time-code"
+      />
+      <div class="error" *ngIf="form.controls['code'].touched && form.controls['code'].invalid">
+        <span *ngIf="form.controls['code'].errors?.['required']">Mã xác nhận là bắt buộc</span>
+        <span *ngIf="form.controls['code'].errors?.['minlength'] || form.controls['code'].errors?.['maxlength']">
+          Mã xác nhận phải có 6 số
+        </span>
+      </div>
+  
+      <div class="error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+  
+      <button type="submit" [disabled]="form.invalid || loading()">
+        {{ loading() ? 'Đang xác nhận...' : 'Xác nhận' }}
+      </button>
+  
+      <div style="text-align: center; margin-top: 1rem;">
+        <button 
+          type="button" 
+          (click)="resendCode()" 
+          [disabled]="loading()"
+          style="background: transparent; color: #667eea; border: none; cursor: pointer; text-decoration: underline;"
+        >
+          Gửi lại mã
+        </button>
+      </div>
+  
+      <!-- Link to sign in -->
+      <div style="text-align: center; margin-top: 1rem;">
+        <a routerLink="/signin" style="color: #667eea; text-decoration: none;">
+          Quay lại đăng nhập
+        </a>
+      </div>
+    </form>
+  </div>
