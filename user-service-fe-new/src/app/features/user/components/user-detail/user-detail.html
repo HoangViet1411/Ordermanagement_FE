@@ -1,0 +1,100 @@
+<!-- user-service-fe-new/src/app/features/user/components/user-detail/user-detail.html -->
+
+<div class="user-detail-container">
+    <div class="header-section">
+      <button class="back-button" (click)="goBack()">← Back</button>
+      <h1>User Details</h1>
+    </div>
+  
+    <div class="error-message" *ngIf="errorMsg()">
+      {{ errorMsg() }}
+    </div>
+  
+    <div class="loading" *ngIf="loading()">
+      Loading user details...
+    </div>
+  
+    <div class="user-card" *ngIf="!loading() && user()">
+      <div class="user-header">
+        <div class="avatar-circle">
+          <span class="avatar-initials">
+            {{ getFullName(user()).charAt(0) }}{{ getFullName(user()).split(' ')[1]?.charAt(0) || '' }}
+          </span>
+        </div>
+        <div class="user-info">
+          <h2>{{ getFullName(user()) }}</h2>
+          <div class="user-meta">
+            <span>#{{ user()?.id }}</span>
+            <span class="divider">•</span>
+            <span class="status-badge" [class.status-active]="getStatusClass(user()) === 'status-active'"
+                  [class.status-unverified]="getStatusClass(user()) === 'status-unverified'"
+                  [class.status-disabled]="getStatusClass(user()) === 'status-disabled'">
+              {{ getStatusText(user()) }}
+            </span>
+          </div>
+        </div>
+        <div class="actions-section" *ngIf="user()">
+          <button class="btn btn-toggle" (click)="toggleAccountStatus(user()!)" [disabled]="loading()">
+            {{ isUserDisabled() ? 'Enable' : 'Disable' }}
+          </button>
+          <button class="btn btn-delete" (click)="deleteAccount(user()!)" [disabled]="loading()">
+            Delete Permanently
+          </button>
+        </div>
+      </div>
+  
+      <div class="details-grid">
+        <!-- Personal Information -->
+        <div class="detail-section">
+          <h3>Personal Information</h3>
+          <div class="detail-item">
+            <span class="label">First Name:</span>
+            <span class="value">{{ getUserFirstName() }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Last Name:</span>
+            <span class="value">{{ getUserLastName() }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Gender:</span>
+            <span class="value">{{ getGenderLabel(user()) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Birth Date:</span>
+            <span class="value">{{ formatDate(getUserBirthDate()) }}</span>
+          </div>
+        </div>
+  
+        <!-- Account Information -->
+        <div class="detail-section">
+          <h3>Account Information</h3>
+          <div class="detail-item">
+            <span class="label">Email:</span>
+            <span class="value">{{ user()?.account?.email || 'N/A' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Account Status:</span>
+            <span class="status-badge" [class.status-active]="getStatusClass(user()) === 'status-active'"
+                  [class.status-unverified]="getStatusClass(user()) === 'status-unverified'"
+                  [class.status-disabled]="getStatusClass(user()) === 'status-disabled'">
+              {{ getStatusText(user()) }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="label">User Status:</span>
+            <span class="value">{{ formatUserStatus(user()?.account?.userStatus) }}</span>
+          </div>
+        </div>
+  
+        <!-- Roles -->
+        <div class="detail-section" *ngIf="hasRoles()">
+          <h3>Roles</h3>
+          <div class="roles-container">
+            <span class="role-badge" *ngFor="let role of getUserRoles()">
+              {{ role.roleName }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>

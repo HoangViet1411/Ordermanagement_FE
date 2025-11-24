@@ -1,11 +1,28 @@
 import express, { type Express } from 'express';
+import morgan from 'morgan';
 import userRoutes from './routes/userRoutes';
+import roleRoutes from './routes/roleRoutes';
+import productRoutes from './routes/productRoutes';
+import orderRoutes from './routes/orderRoutes';
+import authRoutes from './routes/authRoutes';
+import cors from 'cors';
 
 const app: Express = express();
 
+// CORS Configuration
+const corsOptions = {
+  origin: 'http://localhost:4200', // Cho phép frontend Angular
+  credentials: true, // Cho phép gửi cookies/credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
 // Middleware
+app.use(cors(corsOptions));
+app.use(morgan('dev')); // Log HTTP requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
@@ -14,6 +31,10 @@ app.get('/health', (_req, res) => {
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/auth', authRoutes);
 
 export default app;
 

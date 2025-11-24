@@ -1,0 +1,1 @@
+{"version":3,"file":"Transactional.d.ts","sourceRoot":"","sources":["../../src/decorators/Transactional.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAe,kBAAkB,EAAE,MAAM,WAAW,CAAC;AAuBjE,wBAAgB,aAAa,CAAC,OAAO,CAAC,EAAE,kBAAkB,IAEtD,SAAS,GAAG,EACZ,cAAc,MAAM,EACpB,YAAY,kBAAkB,wBA8BjC"}

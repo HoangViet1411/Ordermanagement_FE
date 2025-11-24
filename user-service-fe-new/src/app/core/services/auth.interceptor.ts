@@ -1,6 +1,6 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { from, throwError } from 'rxjs';
-import { switchMap, catchError, retry } from 'rxjs/operators';
+import { switchMap, catchError } from 'rxjs/operators';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {

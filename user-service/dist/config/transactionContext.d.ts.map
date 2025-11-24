@@ -1,0 +1,1 @@
+{"version":3,"file":"transactionContext.d.ts","sourceRoot":"","sources":["../../src/config/transactionContext.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,WAAW,CAAC;AAgB7C,wBAAgB,cAAc,IAAI,WAAW,GAAG,SAAS,CAExD;AAUD,wBAAsB,uBAAuB,CAAC,CAAC,EAC7C,WAAW,EAAE,WAAW,EACxB,EAAE,EAAE,CAAC,CAAC,EAAE,WAAW,KAAK,OAAO,CAAC,CAAC,CAAC,GACjC,OAAO,CAAC,CAAC,CAAC,CAMZ"}

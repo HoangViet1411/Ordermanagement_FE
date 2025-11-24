@@ -71,9 +71,4 @@ export class SigninComponent {
       },
     });
   }
-
-  private navigate(path: string): void {
-    // cho gọn, sau này có thể xử lý returnUrl tại đây
-    this.router.navigateByUrl('/' + path);
-  }
 }

@@ -1,0 +1,227 @@
+/* user-service-fe-new/src/app/features/user/components/user-detail/user-detail.css */
+
+.user-detail-container {
+    padding: 2rem;
+    min-height: 100vh;
+    background: #f5f6f8;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .header-section {
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .back-button {
+    padding: 8px 16px;
+    border: 1px solid #d0d5dd;
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #444;
+    transition: all 0.2s;
+  }
+  
+  .back-button:hover {
+    background: #f5f6f8;
+    border-color: #4f46e5;
+    color: #4f46e5;
+  }
+  
+  .header-section h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #1a1a1a;
+  }
+  
+  .error-message {
+    background-color: #fee;
+    color: #d92d20;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #fcc;
+    font-size: 14px;
+  }
+  
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  
+  .user-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  
+  .user-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #d0d5dd;
+    margin-bottom: 2rem;
+  }
+  
+  .avatar-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #4f46e5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 24px;
+    font-weight: 600;
+  }
+  
+  .user-info {
+    flex: 1;
+  }
+  
+  .user-info h2 {
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+    color: #1a1a1a;
+  }
+  
+  .user-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .divider {
+    color: #d0d5dd;
+  }
+  
+  .actions-section {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+  
+  .detail-section {
+    background: #f9fafb;
+    padding: 1.5rem;
+    border-radius: 8px;
+  }
+  
+  .detail-section h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    color: #1a1a1a;
+    border-bottom: 2px solid #d0d5dd;
+    padding-bottom: 0.5rem;
+  }
+  
+  .detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .detail-item:last-child {
+    border-bottom: none;
+  }
+  
+  .detail-item .label {
+    font-weight: 600;
+    color: #666;
+  }
+  
+  .detail-item .value {
+    color: #1a1a1a;
+  }
+  
+  .roles-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .role-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #e0e7ff;
+    color: #4f46e5;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .status-active {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .status-unverified {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  
+  .status-disabled {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+  }
+  
+  .btn:disabled {
+    background: #a5b0d3 !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .btn-toggle {
+    background-color: #4f46e5;
+    color: #fff;
+  }
+  
+  .btn-toggle:hover:not(:disabled) {
+    background-color: #4338ca;
+  }
+  
+  .btn-delete {
+    background-color: #d92d20;
+    color: #fff;
+  }
+  
+  .btn-delete:hover:not(:disabled) {
+    background-color: #b91c1c;
+  }

@@ -13,7 +13,7 @@ export class NotFoundComponent {
   private router = inject(Router);
 
   goHome(): void {
-    this.router.navigateByUrl('/signin');
+    this.router.navigateByUrl('/dashboard');
   }
 }
 

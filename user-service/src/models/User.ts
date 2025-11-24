@@ -1,32 +1,41 @@
 import { DataTypes, Model, type Optional } from 'sequelize';
 import { sequelize } from '../config/database';
 
-export interface UserAttributes {
-  id: number;
-  first_name: string | null;
-  last_name: string | null;
-  birth_date: Date | null;
-  gender: string | null;
-  created_at: Date;
-  created_by: number | null;
-  updated_at: Date;
-  updated_by: number | null;
-  is_deleted: boolean;
+// Enum cho gender
+export enum Gender {
+  MALE = 'male',
+  FEMALE = 'female',
+  OTHER = 'other',
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'first_name' | 'last_name' | 'birth_date' | 'gender' | 'created_at' | 'created_by' | 'updated_at' | 'updated_by' | 'is_deleted'> {}
+export interface UserAttributes {
+  id: number;
+  cognitoUserId: string | null;
+  firstName: string;
+  lastName: string; 
+  birthDate: Date | null;
+  gender: Gender | null;
+  createdAt: Date;
+  createdBy: number | null;
+  updatedAt: Date;
+  updatedBy: number | null;
+  deletedAt: Date | null;
+}
+
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'cognitoUserId' | 'firstName' | 'lastName' | 'birthDate' | 'gender' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy'> {}
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   declare id: number;
-  declare first_name: string | null;
-  declare last_name: string | null;
-  declare birth_date: Date | null;
-  declare gender: string | null;
-  declare readonly created_at: Date;
-  declare created_by: number | null;
-  declare readonly updated_at: Date;
-  declare updated_by: number | null;
-  declare is_deleted: boolean;
+  declare cognitoUserId: string | null;
+  declare firstName: string; 
+  declare lastName: string; 
+  declare birthDate: Date | null;
+  declare gender: Gender | null;
+  declare readonly createdAt: Date;
+  declare createdBy: number | null;
+  declare readonly updatedAt: Date;
+  declare updatedBy: number | null;
+  declare deletedAt: Date | null;
 }
 
 User.init(
@@ -36,51 +45,66 @@ User.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    first_name: {
-      type: DataTypes.STRING(100),
+    cognitoUserId: {
+      type: DataTypes.STRING(255),
       allowNull: true,
+      unique: true,
+      field: 'cognito_user_id',
     },
-    last_name: {
+    firstName: {
       type: DataTypes.STRING(100),
-      allowNull: true,
+      allowNull: false, // NOT NULL in database
+      field: 'first_name',
     },
-    birth_date: {
+    lastName: {
+      type: DataTypes.STRING(100),
+      allowNull: false, // NOT NULL in database
+      field: 'last_name',
+    },
+    birthDate: {
       type: DataTypes.DATE,
       allowNull: true,
+      field: 'birth_date',
     },
     gender: {
-      type: DataTypes.STRING(10),
+      type: DataTypes.ENUM('male', 'female', 'other'),
       allowNull: true,
     },
-    created_at: {
+    createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
+      field: 'created_at',
+      // Sequelize tự động set giá trị khi timestamps: true
     },
-    created_by: {
+    createdBy: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
+      field: 'created_by',
     },
-    updated_at: {
+    updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
+      field: 'updated_at',
+      // Sequelize tự động set giá trị khi timestamps: true
     },
-    updated_by: {
+    updatedBy: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
+      field: 'updated_by',
     },
-    is_deleted: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false, // 0 = chưa xóa, 1 = đã xóa
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'deleted_at',
+      // Sequelize tự động quản lý khi paranoid: true
     },
   },
   {
     sequelize,
     tableName: 'users',
-    timestamps: false,
+    timestamps: true,
     underscored: true,
+    paranoid: true,
   }
 );
 

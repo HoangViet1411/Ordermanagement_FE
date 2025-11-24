@@ -1,0 +1,92 @@
+<div class="user-list-container">
+    <div class="header">
+      <h1>User List</h1>
+    </div>
+  
+    <div class="error-message" *ngIf="errorMsg()">
+      {{ errorMsg() }}
+    </div>
+  
+    <div class="loading" *ngIf="loading()">
+      Loading...
+    </div>
+  
+    <div class="table-container" *ngIf="!loading()">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Username</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users()" [class.user-disabled]="isDisabled(user)">
+            <td>{{ getUserEmail(user) }}</td>
+            <td>{{ getUserName(user) }}</td>
+            <td>
+              <span
+                class="status-badge"
+                [class.status-unverified]="getUserStatus(user) === 'unverified'"
+                [class.status-active]="getUserStatus(user) === 'active'"
+                [class.status-disabled]="getUserStatus(user) === 'disabled'"
+              >
+                {{ getUserStatusLabel(user) }}
+              </span>
+            </td>
+            <td class="actions">
+              <button
+                class="btn btn-toggle"
+                (click)="toggleUserStatus(user)"
+                [disabled]="loading()"
+              >
+                {{ isDisabled(user) ? 'Enable' : 'Disable' }}
+              </button>
+              <button
+                class="btn btn-delete"
+                (click)="hardDeleteUser(user)"
+                [disabled]="loading()"
+              >
+                Delete
+              </button>
+              <button
+                class="btn btn-view"
+                (click)="viewUserDetail(user)"
+                [disabled]="loading()"
+              >
+                View Detail
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="users().length === 0">
+            <td colspan="4" class="no-data">No data</td>
+          </tr>
+        </tbody>
+      </table>
+  
+      <div class="pagination" *ngIf="pagination().totalPages > 1">
+        <button
+          class="btn-pagination"
+          (click)="goToPage(pagination().page - 1)"
+          [disabled]="pagination().page <= 1"
+        >
+          Previous
+        </button>
+  
+        <span class="page-info">
+          Page {{ pagination().page }} / {{ pagination().totalPages }}
+          (Total: {{ pagination().total }})
+        </span>
+  
+        <button
+          class="btn-pagination"
+          (click)="goToPage(pagination().page + 1)"
+          [disabled]="pagination().page >= pagination().totalPages"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  </div>
+  
