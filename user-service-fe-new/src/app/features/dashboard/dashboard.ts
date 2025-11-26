@@ -1,37 +1,32 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { AuthService } from '../../core/services/auth.service';
+import { Router, RouterModule } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { Observable } from 'rxjs';
+import { AppState } from '../../store';
+import * as AuthActions from '../../store/auth/actions/auth.action';
+import { selectIsLoading } from '../../store/auth/selectors/auth.selectors';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.css'],
 })
 export class DashboardComponent {
-  private auth = inject(AuthService);
+  private store = inject(Store<AppState>);
   private router = inject(Router);
-
-  loading = signal(false);
+  
+  // Selector cho loading state
+  loading$: Observable<boolean> = this.store.select(selectIsLoading);
 
   logout(): void {
-    if (this.loading()) return;
+    // Chỉ cần dispatch action, Effect sẽ xử lý logout và navigation
+    this.store.dispatch(AuthActions.signOut());
+  }
 
-    this.loading.set(true);
-    this.auth.signOutAll().subscribe({
-      next: () => {
-        this.loading.set(false);
-        this.router.navigateByUrl('/signin');
-      },
-      error: (err) => {
-        console.error('Logout error:', err);
-        // Vẫn clear user và redirect dù có lỗi
-        this.auth.clearCurrentUser();
-        this.loading.set(false);
-        this.router.navigateByUrl('/signin');
-      },
-    });
+  goToUserList(): void {
+    this.router.navigate(['/users']);
   }
 }

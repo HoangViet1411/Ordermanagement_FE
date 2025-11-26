@@ -25,10 +25,10 @@
       Mật khẩu xác nhận không khớp
     </div>
 
-    <div class="error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+    <div class="error" *ngIf="signUpError$ | async as error">{{ error }}</div>
 
-    <button type="submit" [disabled]="form.invalid || loading()">
-      {{ loading() ? 'Đang đăng ký...' : 'Đăng ký' }}
+    <button type="submit" [disabled]="form.invalid || (isSigningUp$ | async)">
+      {{ (isSigningUp$ | async) ? 'Đang đăng ký...' : 'Đăng ký' }}
     </button>
 
     <!-- Link to sign in -->

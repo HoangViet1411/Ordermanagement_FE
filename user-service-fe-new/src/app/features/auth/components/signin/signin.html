@@ -14,10 +14,10 @@
       password must be at least 6 characters long
     </div>
 
-    <div class="error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+    <div class="error" *ngIf="signInError$ | async as error">{{ error }}</div>
 
-    <button type="submit" [disabled]="form.invalid || loading()">
-      {{ loading() ? 'signing in...' : 'signin' }}
+    <button type="submit" [disabled]="form.invalid || (isSigningIn$ | async)">
+      {{ (isSigningIn$ | async) ? 'signing in...' : 'signin' }}
     </button>
 
     <!-- Link to sign up -->

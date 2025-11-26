@@ -1,6 +1,6 @@
 <div class="page">
     <form class="card" [formGroup]="form" (ngSubmit)="submit()">
-      <h1>{{ isEditMode() ? 'Edit Profile' : 'Create Profile' }}</h1>
+      <h1>{{ (isEditMode$ | async) ? 'Edit Profile' : 'Create Profile' }}</h1>
   
       <label>First Name *</label>
       <input type="text" formControlName="first_name" placeholder="First name" />
@@ -25,10 +25,10 @@
         <option value="other">Other</option>
       </select>
   
-      <div class="error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+      <div class="error" *ngIf="errorMsg$ | async as error">{{ error }}</div>
   
-      <button type="submit" [disabled]="form.invalid || loading()">
-        {{ loading() ? 'Saving...' : (isEditMode() ? 'Update Profile' : 'Create Profile') }}
+      <button type="submit" [disabled]="form.invalid || (isSaving$ | async)">
+        {{ (isSaving$ | async) ? 'Saving...' : ((isEditMode$ | async) ? 'Update Profile' : 'Create Profile') }}
       </button>
     </form>
   </div>

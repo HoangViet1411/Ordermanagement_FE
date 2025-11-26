@@ -92,6 +92,10 @@ export class UserService {
     return this.api.post<ProfileResponse>('/users/profile', data);
   }
 
+  // Verify token với backend
+  verifyToken(): Observable<{ success: boolean; data?: any; message: string }> {
+    return this.api.get<{ success: boolean; data?: any; message: string }>('/auth/verify');
+  }
 
   getUsers(params: UsersParams = {}): Observable<UsersResponse> {
     const queryParams = new URLSearchParams();

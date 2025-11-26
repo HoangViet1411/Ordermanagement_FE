@@ -1,9 +1,16 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { UserService, ProfileData } from '../../../../core/services/user.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { Store } from '@ngrx/store';
+import { Observable } from 'rxjs';
+import { AppState } from '../../../../store';
+import * as ProfileActions from '../../../../store/auth/actions/profile.action';
+import { 
+  selectProfile,
+  selectIsEditMode,
+  selectIsSaving,
+  selectProfileError
+} from '../../../../store/auth/selectors/profile.selector';
 
 @Component({
   selector: 'app-profile',
@@ -14,13 +21,13 @@ import { AuthService } from '../../../../core/services/auth.service';
 })
 export class ProfileComponent implements OnInit {
   private fb = inject(FormBuilder);
-  private userService = inject(UserService);
-  private router = inject(Router);
-  private auth = inject(AuthService);
+  private store = inject(Store<AppState>);
 
-  loading = signal(false);
-  errorMsg = signal<string | null>(null);
-  isEditMode = signal(false);
+  // Selectors
+  profile$: Observable<any> = this.store.select(selectProfile);
+  isEditMode$: Observable<boolean> = this.store.select(selectIsEditMode);
+  isSaving$: Observable<boolean> = this.store.select(selectIsSaving);
+  errorMsg$: Observable<string | null> = this.store.select(selectProfileError);
 
   form = this.fb.group({
     first_name: ['', [Validators.required]],
@@ -30,25 +37,20 @@ export class ProfileComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.loadProfile();
-  }
-
-  loadProfile(): void {
-    // Chỉ dùng cache từ localStorage
-    const cachedProfile = this.auth.getProfileFromStorage();
-    if (cachedProfile && cachedProfile.success && cachedProfile.data) {
-      // Có cache → load vào form
-          this.form.patchValue({
-        first_name: cachedProfile.data.firstName || cachedProfile.data.first_name || '',
-        last_name: cachedProfile.data.LastName || cachedProfile.data.lastName || cachedProfile.data.last_name || '',
-        birth_date: cachedProfile.data.birthDate ? cachedProfile.data.birthDate.split('T')[0] : '',
-        gender: cachedProfile.data.gender || '',
-          });
-          this.isEditMode.set(true);
-        } else {
-      // Không có cache → form trống, chờ user tạo profile
-          this.isEditMode.set(false);
-        }
+    // Dispatch load profile action
+    this.store.dispatch(ProfileActions.loadProfile());
+    
+    // Subscribe để load profile vào form khi có data
+    this.profile$.subscribe(profile => {
+      if (profile && profile.success && profile.data) {
+        this.form.patchValue({
+          first_name: profile.data.firstName || profile.data.first_name || '',
+          last_name: profile.data.lastName || profile.data.last_name || '',
+          birth_date: profile.data.birthDate ? profile.data.birthDate.split('T')[0] : '',
+          gender: profile.data.gender || '',
+        });
+      }
+    });
   }
 
   submit(): void {
@@ -57,38 +59,14 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
-    if (this.loading()) return;
-
-    this.loading.set(true);
-    this.errorMsg.set(null);
-
-    const data: ProfileData = {
+    const profileData = {
       first_name: this.form.value.first_name!,
       last_name: this.form.value.last_name!,
       birth_date: this.form.value.birth_date || undefined,
       gender: this.form.value.gender as any || undefined,
     };
 
-    this.userService.createOrUpdateProfile(data).subscribe({
-      next: (response) => {
-        this.loading.set(false);
-        if (response.success) {
-          // Lưu profile vào localStorage sau khi create/update thành công
-          this.auth.markProfileCreated(response);
-          // this.loadProfile();
-          // Hoặc navigate đến dashboard
-          this.router.navigateByUrl('/dashboard');
-        }
-      },
-      error: (err) => {
-        this.loading.set(false);
-        if (err.error?.errors) {
-          // Validation errors từ backend
-          this.errorMsg.set(err.error.message || 'Validation error');
-        } else {
-          this.errorMsg.set('Không thể lưu profile. Thử lại sau.');
-        }
-      },
-    });
+    // Dispatch action thay vì gọi service trực tiếp
+    this.store.dispatch(ProfileActions.createOrUpdateProfile({ profileData }));
   }
 }

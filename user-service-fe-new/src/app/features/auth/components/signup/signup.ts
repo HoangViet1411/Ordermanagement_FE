@@ -1,8 +1,15 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../../../core/services/auth.service';
+import { RouterLink } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { Observable } from 'rxjs';
+import { AppState } from '../../../../store';
+import * as AuthActions from '../../../../store/auth/actions/auth.action';
+import { 
+  selectIsSigningUp, 
+  selectSignUpError 
+} from '../../../../store/auth/selectors/auth.selectors';
 
 @Component({
   selector: 'app-signup',
@@ -13,11 +20,11 @@ import { AuthService } from '../../../../core/services/auth.service';
 })
 export class SignupComponent {
   private fb = inject(FormBuilder);
-  private auth = inject(AuthService);
-  private router = inject(Router);
+  private store = inject(Store<AppState>);
 
-  loading = signal(false);
-  errorMsg = signal<string | null>(null);
+  // Selectors
+  isSigningUp$: Observable<boolean> = this.store.select(selectIsSigningUp);
+  signUpError$: Observable<string | null> = this.store.select(selectSignUpError);
 
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -43,37 +50,12 @@ export class SignupComponent {
       return;
     }
 
-    // 2. Chặn double-submit khi đang loading
-    if (this.loading()) return;
-
-    this.loading.set(true);
-    this.errorMsg.set(null);
-
     const { email, password } = this.form.value;
-
-    this.auth.signUp({ email: email!, password: password! }).subscribe({
-      next: () => {
-        this.loading.set(false);
-        // Điều hướng đến trang confirm email
-        this.router.navigateByUrl('/confirm-email', { 
-          state: { email } 
-        });
-      },
-      error: (err) => {
-        this.loading.set(false);
-
-        // Map lỗi Cognito
-        const code = err?.name || err?.code;
-        if (code === 'UsernameExistsException') {
-          this.errorMsg.set('Email này đã được sử dụng.');
-        } else if (code === 'InvalidPasswordException') {
-          this.errorMsg.set('Mật khẩu không đáp ứng yêu cầu.');
-        } else if (code === 'InvalidParameterException') {
-          this.errorMsg.set('Thông tin không hợp lệ.');
-        } else {
-          this.errorMsg.set('Đăng ký thất bại. Thử lại sau.');
-        }
-      },
-    });
+    
+    // Dispatch action thay vì gọi service trực tiếp
+    this.store.dispatch(AuthActions.signUp({ 
+      email: email!, 
+      password: password! 
+    }));
   }
 }

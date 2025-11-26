@@ -1,100 +1,112 @@
-<!-- user-service-fe-new/src/app/features/user/components/user-detail/user-detail.html -->
-
 <div class="user-detail-container">
-    <div class="header-section">
-      <button class="back-button" (click)="goBack()">← Back</button>
-      <h1>User Details</h1>
+  <div class="header-section">
+    <button class="back-button" (click)="goBack()">← Back</button>
+    <h1>User Details</h1>
+  </div>
+
+  <!-- Dùng ng-container để tạo alias, tránh multiple subscriptions -->
+  <ng-container *ngIf="{
+    error: errorMsg$ | async,
+    loading: loading$ | async,
+    user: user$ | async
+  } as vm">
+    
+    <div class="error-message" *ngIf="vm.error">
+      {{ vm.error }}
     </div>
-  
-    <div class="error-message" *ngIf="errorMsg()">
-      {{ errorMsg() }}
-    </div>
-  
-    <div class="loading" *ngIf="loading()">
+
+    <div class="loading" *ngIf="vm.loading">
       Loading user details...
     </div>
-  
-    <div class="user-card" *ngIf="!loading() && user()">
+
+    <div class="user-card" *ngIf="!vm.loading && vm.user">
       <div class="user-header">
         <div class="avatar-circle">
           <span class="avatar-initials">
-            {{ getFullName(user()).charAt(0) }}{{ getFullName(user()).split(' ')[1]?.charAt(0) || '' }}
+            {{ getFullName(vm.user).charAt(0) }}{{ getFullName(vm.user).split(' ')[1]?.charAt(0) || '' }}
           </span>
         </div>
         <div class="user-info">
-          <h2>{{ getFullName(user()) }}</h2>
+          <h2>{{ getFullName(vm.user) }}</h2>
           <div class="user-meta">
-            <span>#{{ user()?.id }}</span>
+            <span>#{{ vm.user.id }}</span>
             <span class="divider">•</span>
-            <span class="status-badge" [class.status-active]="getStatusClass(user()) === 'status-active'"
-                  [class.status-unverified]="getStatusClass(user()) === 'status-unverified'"
-                  [class.status-disabled]="getStatusClass(user()) === 'status-disabled'">
-              {{ getStatusText(user()) }}
+            <span class="status-badge" 
+                  [class.status-active]="getStatusClass(vm.user) === 'status-active'"
+                  [class.status-unverified]="getStatusClass(vm.user) === 'status-unverified'"
+                  [class.status-disabled]="getStatusClass(vm.user) === 'status-disabled'">
+              {{ getStatusText(vm.user) }}
             </span>
           </div>
         </div>
-        <div class="actions-section" *ngIf="user()">
-          <button class="btn btn-toggle" (click)="toggleAccountStatus(user()!)" [disabled]="loading()">
-            {{ isUserDisabled() ? 'Enable' : 'Disable' }}
+        <div class="actions-section" *ngIf="vm.user">
+          <button class="btn btn-toggle" 
+                  (click)="toggleAccountStatus(vm.user!)" 
+                  [disabled]="vm.loading">
+            {{ isUserDisabled(vm.user) ? 'Enable' : 'Disable' }}
           </button>
-          <button class="btn btn-delete" (click)="deleteAccount(user()!)" [disabled]="loading()">
+          <button class="btn btn-delete" 
+                  (click)="deleteAccount(vm.user!)" 
+                  [disabled]="vm.loading">
             Delete Permanently
           </button>
         </div>
       </div>
-  
+
       <div class="details-grid">
         <!-- Personal Information -->
         <div class="detail-section">
           <h3>Personal Information</h3>
           <div class="detail-item">
             <span class="label">First Name:</span>
-            <span class="value">{{ getUserFirstName() }}</span>
+            <span class="value">{{ getUserFirstName(vm.user) }}</span>
           </div>
           <div class="detail-item">
             <span class="label">Last Name:</span>
-            <span class="value">{{ getUserLastName() }}</span>
+            <span class="value">{{ getUserLastName(vm.user) }}</span>
           </div>
           <div class="detail-item">
             <span class="label">Gender:</span>
-            <span class="value">{{ getGenderLabel(user()) }}</span>
+            <span class="value">{{ getGenderLabel(vm.user) }}</span>
           </div>
           <div class="detail-item">
             <span class="label">Birth Date:</span>
-            <span class="value">{{ formatDate(getUserBirthDate()) }}</span>
+            <span class="value">{{ formatDate(getUserBirthDate(vm.user)) }}</span>
           </div>
         </div>
-  
+
         <!-- Account Information -->
         <div class="detail-section">
           <h3>Account Information</h3>
           <div class="detail-item">
             <span class="label">Email:</span>
-            <span class="value">{{ user()?.account?.email || 'N/A' }}</span>
+            <span class="value">{{ vm.user.account?.email || 'N/A' }}</span>
           </div>
           <div class="detail-item">
             <span class="label">Account Status:</span>
-            <span class="status-badge" [class.status-active]="getStatusClass(user()) === 'status-active'"
-                  [class.status-unverified]="getStatusClass(user()) === 'status-unverified'"
-                  [class.status-disabled]="getStatusClass(user()) === 'status-disabled'">
-              {{ getStatusText(user()) }}
+            <span class="status-badge" 
+                  [class.status-active]="getStatusClass(vm.user) === 'status-active'"
+                  [class.status-unverified]="getStatusClass(vm.user) === 'status-unverified'"
+                  [class.status-disabled]="getStatusClass(vm.user) === 'status-disabled'">
+              {{ getStatusText(vm.user) }}
             </span>
           </div>
           <div class="detail-item">
             <span class="label">User Status:</span>
-            <span class="value">{{ formatUserStatus(user()?.account?.userStatus) }}</span>
+            <span class="value">{{ formatUserStatus(vm.user.account?.userStatus) }}</span>
           </div>
         </div>
-  
+
         <!-- Roles -->
-        <div class="detail-section" *ngIf="hasRoles()">
+        <div class="detail-section" *ngIf="hasRoles(vm.user)">
           <h3>Roles</h3>
           <div class="roles-container">
-            <span class="role-badge" *ngFor="let role of getUserRoles()">
+            <span class="role-badge" *ngFor="let role of getUserRoles(vm.user)">
               {{ role.roleName }}
             </span>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </ng-container>
+</div>

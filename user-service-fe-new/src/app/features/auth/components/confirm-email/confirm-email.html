@@ -21,17 +21,17 @@
         </span>
       </div>
   
-      <div class="error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+      <div class="error" *ngIf="errorMsg$ | async as error">{{ error }}</div>
   
-      <button type="submit" [disabled]="form.invalid || loading()">
-        {{ loading() ? 'Đang xác nhận...' : 'Xác nhận' }}
+      <button type="submit" [disabled]="form.invalid || (loading$ | async)">
+        {{ (isConfirmingEmail$ | async) ? 'Đang xác nhận...' : 'Xác nhận' }}
       </button>
   
       <div style="text-align: center; margin-top: 1rem;">
         <button 
           type="button" 
           (click)="resendCode()" 
-          [disabled]="loading()"
+          [disabled]="loading$ | async"
           style="background: transparent; color: #667eea; border: none; cursor: pointer; text-decoration: underline;"
         >
           Gửi lại mã

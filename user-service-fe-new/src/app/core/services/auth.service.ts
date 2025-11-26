@@ -1,6 +1,6 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { from, Observable, tap, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 import {
   signIn,
@@ -9,7 +9,6 @@ import {
   resendSignUpCode,
   signOut,
   getCurrentUser,
-  fetchAuthSession,
 } from 'aws-amplify/auth';
 import { ProfileResponse, UserService } from './user.service';
 
@@ -17,7 +16,6 @@ export interface CurrentUser {
   userId: string;
   username: string;
   email: string;
-  attributes?: Record<string, string>;
 }
 
 export interface SignInRequest { email: string; password: string; }
@@ -60,44 +58,78 @@ export class AuthService {
       this.loadFromStorage();
       const storedUser = this._currentUser();
 
-      // Nếu có user trong localStorage → verify với Amplify
+      // Nếu có user trong localStorage → verify với backend
       if (storedUser !== null) {
+        // Verify token với backend API
+        this.userService.verifyToken().pipe(
+          tap((response) => {
+            if (response.success) {
+              // Token hợp lệ với backend
+              // Verify lại với Amplify để đảm bảo đồng bộ
+              from(getCurrentUser())
+                .pipe(
+                  tap((user) => {
+                    const currentUser: CurrentUser = {
+                      userId: user.userId,
+                      username: user.username,
+                      email: user.signInDetails?.loginId || response.data.email || '',
+                    };
+
+                    // Check userId
+                    if (storedUser.userId !== currentUser.userId) {
+                      this.clearCurrentUser();
+                      observer.next(false);
+                      observer.complete();
+                      return;
+                    }
+
+                    // Update user info
+                    this._currentUser.set(currentUser);
+                    this.saveToStorage(currentUser);
+                    observer.next(true);
+                    observer.complete();
+                  }),
+                  catchError(() => {
+                    this.clearCurrentUser();
+                    observer.next(false);
+                    observer.complete();
+                    return of(false);
+                  })
+                )
+                .subscribe();
+            } else {
+              // Token không hợp lệ với backend
+              this.clearCurrentUser();
+              observer.next(false);
+              observer.complete();
+            }
+          }),
+          catchError(() => {
+            // Verify thất bại → clear state
+            this.clearCurrentUser();
+            observer.next(false);
+            observer.complete();
+            return of(false);
+          })
+        ).subscribe();
+      } else {
+        // Không có user trong localStorage -> thử get từ Amplify
+        // Trường hợp: localStorage bị mất nhưng Amplify session vẫn còn -> restore user vào localStorage
         from(getCurrentUser())
           .pipe(
             tap((user) => {
-              // Verify thành công → check xem có phải cùng user không
+              // Amplify có session hợp lệ -> restore user vào localStorage
               const currentUser: CurrentUser = {
                 userId: user.userId,
                 username: user.username,
                 email: user.signInDetails?.loginId || '',
               };
-
-              // Bắt buộc: Check userId để đảm bảo cùng user
-              if (storedUser.userId !== currentUser.userId) {
-                // User khác nhau → clear state và return false
-                this.clearCurrentUser();
-                observer.next(false);
-                observer.complete();
-                return;
-              }
-
-              // Cùng user → check xem có thay đổi không (tối ưu)
-              // Dùng JSON.stringify để so sánh toàn bộ object
-              if (JSON.stringify(storedUser) === JSON.stringify(currentUser)) {
-                // Không có thay đổi → không cần update
-                observer.next(true);
-                observer.complete();
-                return;
-              }
-
-              // Có thay đổi (email/username) → update
               this._currentUser.set(currentUser);
               this.saveToStorage(currentUser);
               observer.next(true);
             }),
             catchError(() => {
-              // Verify thất bại → clear state
-              this.clearCurrentUser();
+              // Không có session trong Amplify -> không authenticated
               observer.next(false);
               return of(false);
             })
@@ -105,10 +137,6 @@ export class AuthService {
           .subscribe({
             complete: () => observer.complete(),
           });
-      } else {
-        // Không có user → không authenticated
-        observer.next(false);
-        observer.complete();
       }
     });
   }
@@ -150,24 +178,23 @@ export class AuthService {
 
   // Verify authentication với Amplify và return Observable<boolean>
   saveUserToStorage(): Observable<boolean> {
-  return from(getCurrentUser()).pipe(
-    tap((user) => {
-      const currentUser: CurrentUser = {
-        userId: user.userId,
-        username: user.username,
-        email: user.signInDetails?.loginId || '',
-      };
-      this._currentUser.set(currentUser);
-      this.saveToStorage(currentUser);
-    }),
-    map(() => true),
-    catchError(() => {
-      this.clearCurrentUser();
-      return of(false);
-    })
-  );
-}
-
+    return from(getCurrentUser()).pipe(
+      tap((user) => {
+        const currentUser: CurrentUser = {
+          userId: user.userId,
+          username: user.username,
+          email: user.signInDetails?.loginId || '',
+        };
+        this._currentUser.set(currentUser);
+        this.saveToStorage(currentUser);
+      }),
+      map(() => true),
+      catchError(() => {
+        this.clearCurrentUser();
+        return of(false);
+      })
+    );
+  }
 
   // Clear user (dùng khi signout)
   clearCurrentUser(): void {

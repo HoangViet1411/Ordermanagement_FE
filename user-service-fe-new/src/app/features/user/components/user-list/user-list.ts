@@ -1,7 +1,17 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { UserService, User, UsersParams, UsersResponse } from '../../../../core/services/user.service';
+import { Store } from '@ngrx/store';
+import { Observable } from 'rxjs';
+import { AppState } from '../../../../store';
+import * as UserActions from '../../../../store/user/actions/user.action';
+import {
+  selectUsers,
+  selectPagination,
+  selectIsLoading,
+  selectUserError,
+} from '../../../../store/user/selectors/user.selectors';
+import { User } from '../../../../core/services/user.service';
 
 @Component({
   selector: 'app-user-list',
@@ -11,65 +21,36 @@ import { UserService, User, UsersParams, UsersResponse } from '../../../../core/
   styleUrls: ['./user-list.css'],
 })
 export class UserListComponent implements OnInit {
-  private userService = inject(UserService);
+  private store = inject(Store<AppState>);
   private router = inject(Router);
 
-  loading = signal(false);
-  errorMsg = signal<string | null>(null);
-  users = signal<User[]>([]);
-
-  pagination = signal({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 0, 
-  });
+  // Selectors
+  users$: Observable<User[]> = this.store.select(selectUsers);
+  pagination$: Observable<any> = this.store.select(selectPagination);
+  loading$: Observable<boolean> = this.store.select(selectIsLoading);
+  errorMsg$: Observable<string | null> = this.store.select(selectUserError);
 
   ngOnInit(): void {
-    this.loadUsers();
-  }
-
-  loadUsers(): void {
-    this.loading.set(true);
-    this.errorMsg.set(null);
-
-    const params: UsersParams = {
-      page: this.pagination().page,
-      limit: this.pagination().limit,
-      includeAccount: 'true',
-      include_deleted: true,
-    };
-
-    this.userService.getUsers(params).subscribe({
-      next: (response: UsersResponse) => {
-        this.loading.set(false);
-        if (response.success && response.data) {
-          this.users.set(response.data);
-          if (response.pagination) {
-            this.pagination.set({
-              page: response.pagination.page,
-              limit: response.pagination.limit,
-              total: response.pagination.total,
-              totalPages: response.pagination.totalPages,
-            });
-          }
-        } else {
-          this.errorMsg.set('Unable to load users list.');
-        }
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.errorMsg.set(err.error?.message || 'Unable to load users list.');
-      },
-    });
+    // Dispatch load users action với default params
+    this.store.dispatch(
+      UserActions.loadUsers({
+        params: {
+          page: 1,
+          limit: 10,
+          includeAccount: 'true',
+          include_deleted: true,
+        },
+      })
+    );
   }
 
   goToPage(page: number): void {
-    const p = this.pagination();
-    if (page >= 1 && page <= p.totalPages) {
-      this.pagination.update(val => ({ ...val, page }));
-      this.loadUsers();
-    }
+    this.store.dispatch(UserActions.changePage({ page }));
+  }
+
+  // TrackBy function để tối ưu *ngFor performance
+  trackByUserId(index: number, user: User): number {
+    return user.id;
   }
 
   getUserStatus(user: User): string {
@@ -106,58 +87,34 @@ export class UserListComponent implements OnInit {
   }
 
   toggleUserStatus(user: User): void {
-    if (this.loading()) return;
-
     const isDisabled = this.isDisabled(user);
-    const action = isDisabled
-      ? this.userService.restoreUser(user.id)
-      : this.userService.softDeleteUser(user.id);
-
-    this.loading.set(true);
-    action.subscribe({
-      next: (response) => {
-        this.loading.set(false);
-        if (response.success) {
-          this.loadUsers();
-        } else {
-          this.errorMsg.set(response.message || 'Operation failed.');
-        }
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.errorMsg.set(err.error?.message || 'Operation failed.');
-      },
-    });
+    this.store.dispatch(
+      UserActions.toggleUserStatus({ userId: user.id, isDisabled })
+    );
   }
 
   hardDeleteUser(user: User): void {
-    if (this.loading()) return;
-
     const email = this.getUserEmail(user);
 
-    if (!confirm(`Are you sure you want to permanently delete user "${email !== 'N/A' ? email : user.id}"?`)) {
+    if (
+      !confirm(
+        `Are you sure you want to permanently delete user "${
+          email !== 'N/A' ? email : user.id
+        }"?`
+      )
+    ) {
       return;
     }
 
-    this.loading.set(true);
-    this.userService.hardDeleteUser(user.id).subscribe({
-      next: (response) => {
-        this.loading.set(false);
-        if (response.success) {
-          this.loadUsers();
-        } else {
-          this.errorMsg.set(response.message || 'Failed to delete user.');
-        }
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.errorMsg.set(err.error?.message || 'Failed to delete user.');
-      },
-    });
+    this.store.dispatch(UserActions.hardDeleteUser({ userId: user.id }));
   }
 
   viewUserDetail(user: User): void {
     this.router.navigateByUrl(`/users/${user.id}`);
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   getUserName(user: User): string {

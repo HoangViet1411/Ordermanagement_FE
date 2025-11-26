@@ -7,6 +7,9 @@
 }
 
 .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 2rem;
   padding: 1rem;
   background: #fff;
@@ -226,4 +229,20 @@
 .page-info {
   color: #666;
   font-size: 14px;
+}
+
+.btn-dashboard {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #10b981;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.btn-dashboard:hover {
+  background: #059669;
 }
